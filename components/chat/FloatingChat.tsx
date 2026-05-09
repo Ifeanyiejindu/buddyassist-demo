@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, ReactNode } from "react";
 import Image from "next/image";
 import { BuddyChat, mdInline } from "@/lib/buddyChat";
+import { createBuddyComplete, type IndustrySlug } from "@/lib/buddyClient";
 
 interface Suggest {
   pill: string;
@@ -37,6 +38,9 @@ interface FloatingChatProps {
   footer?: ReactNode;
   /** Optional chat completion provider — return the assistant's reply text. */
   complete?: (messages: { role: "user" | "assistant"; content: string }[]) => Promise<string>;
+  /** Industry slug used to resolve a backend-backed `complete` when none is passed.
+   *  Safe to send across the server/client boundary — `complete` is built inside the client. */
+  industrySlug?: IndustrySlug;
 }
 
 export function FloatingChat({
@@ -50,7 +54,9 @@ export function FloatingChat({
   theme = {},
   footer,
   complete,
+  industrySlug,
 }: FloatingChatProps) {
+  const resolvedComplete = complete || (industrySlug ? createBuddyComplete(industrySlug) : undefined);
   const [open, setOpen] = useState(false);
   const [showGreet, setShowGreet] = useState(true);
   const [messages, setMessages] = useState<
@@ -61,7 +67,7 @@ export function FloatingChat({
   const [input, setInput] = useState("");
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const chat = useRef(
-    new BuddyChat({ systemPrompt, complete: complete as never }),
+    new BuddyChat({ systemPrompt, complete: resolvedComplete as never }),
   );
 
   useEffect(() => {
