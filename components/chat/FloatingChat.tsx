@@ -36,7 +36,7 @@ interface FloatingChatProps {
   /** Footer line; defaults to "Powered by Buddy Assist". */
   footer?: ReactNode;
   /** Optional chat completion provider — return the assistant's reply text. */
-  complete?: (messages: { role: string; content: string }[]) => Promise<string>;
+  complete?: (messages: { role: "user" | "assistant"; content: string }[]) => Promise<string>;
 }
 
 export function FloatingChat({

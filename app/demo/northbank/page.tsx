@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { BuddyChat, mdInline } from "@/lib/buddyChat";
+import { createBuddyComplete } from "@/lib/buddyClient";
 
 const SYSTEM_PROMPT = `
 You are Buddy, the private banking assistant for Adelaide Voss inside Northbank — a personal banking & wealth app.
@@ -40,7 +41,7 @@ export default function NorthbankPage() {
   const [input, setInput] = useState("");
   const bbodyRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT }));
+  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT, complete: createBuddyComplete("northbank") }));
 
   useEffect(() => {
     if (bbodyRef.current) bbodyRef.current.scrollTop = bbodyRef.current.scrollHeight;

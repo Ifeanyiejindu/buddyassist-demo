@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { BuddyChat, mdInline } from "@/lib/buddyChat";
+import { createBuddyComplete } from "@/lib/buddyClient";
 
 const SYSTEM_PROMPT = `
 You are Renata Falci, the sommelier and dining host at Olivella — a neighbourhood wood-fired Italian trattoria in Carroll Gardens, Brooklyn.
@@ -114,7 +115,7 @@ export default function OlivellaPage() {
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const convoRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT }));
+  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT, complete: createBuddyComplete("olivetta") }));
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;

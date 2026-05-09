@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { BuddyChat, mdInline } from "@/lib/buddyChat";
+import { createBuddyComplete } from "@/lib/buddyClient";
 
 const SYSTEM_PROMPT = `
 You are Lumen, an AI tutor for Mira (junior at Carnegie HS, taking AP Calculus BC, AP US History, Spanish III, Intro to Python).
@@ -44,7 +45,7 @@ export default function LumenPage() {
   const [input, setInput] = useState("");
   const streamRef = useRef<HTMLDivElement | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
-  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT }));
+  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT, complete: createBuddyComplete("lumen") }));
 
   useEffect(() => {
     if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight;

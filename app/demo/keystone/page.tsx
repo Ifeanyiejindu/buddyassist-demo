@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { BuddyChat, mdInline } from "@/lib/buddyChat";
+import { createBuddyComplete } from "@/lib/buddyClient";
 
 const SYSTEM_PROMPT = `
 You are the Keystone Realty AI concierge for a Brooklyn home buyer. You help users translate a fuzzy lifestyle ("good school + home office + walkable + under $1.5M") into specific listings, school zones, neighborhood character, and rough mortgage math.
@@ -98,7 +99,7 @@ export default function KeystonePage() {
   const [input, setInput] = useState("");
   const bbodyRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT }));
+  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT, complete: createBuddyComplete("keystone") }));
 
   useEffect(() => {
     if (bbodyRef.current) bbodyRef.current.scrollTop = bbodyRef.current.scrollHeight;

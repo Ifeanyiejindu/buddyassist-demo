@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { BuddyChat } from "@/lib/buddyChat";
+import { createBuddyComplete } from "@/lib/buddyClient";
 
 const SYSTEM_PROMPT = `
 You are Buddy, the trip-planning concierge for Wayfare — a travel-booking app.
@@ -176,7 +177,7 @@ export default function WayfarePage() {
   const [input, setInput] = useState("");
   const convoRef = useRef<HTMLDivElement | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
-  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT }));
+  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT, complete: createBuddyComplete("wayfare") }));
 
   useEffect(() => {
     if (convoRef.current) convoRef.current.scrollTop = convoRef.current.scrollHeight;

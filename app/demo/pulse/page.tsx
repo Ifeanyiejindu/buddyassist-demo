@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { BuddyChat, mdInline } from "@/lib/buddyChat";
+import { createBuddyComplete } from "@/lib/buddyClient";
 
 const SYSTEM_PROMPT = `
 You are Buddy, the marketing intelligence assistant inside Pulse — a marketing analytics & campaign tool.
@@ -76,7 +77,7 @@ export default function PulsePage() {
   const [input, setInput] = useState("");
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT }));
+  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT, complete: createBuddyComplete("pulse") }));
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

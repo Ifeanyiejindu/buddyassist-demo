@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { BuddyChat, mdInline } from "@/lib/buddyChat";
+import { createBuddyComplete } from "@/lib/buddyClient";
 
 const SYSTEM_PROMPT = `
 You are Buddy, the support copilot inside Helix Support — a helpdesk for SaaS customer support agents.
@@ -124,7 +125,7 @@ export default function HelixPage() {
   const [typing, setTyping] = useState(false);
   const [ask, setAsk] = useState("");
   const bbodyRef = useRef<HTMLDivElement | null>(null);
-  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT }));
+  const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT, complete: createBuddyComplete("helix") }));
 
   useEffect(() => {
     if (bbodyRef.current) bbodyRef.current.scrollTop = bbodyRef.current.scrollHeight;

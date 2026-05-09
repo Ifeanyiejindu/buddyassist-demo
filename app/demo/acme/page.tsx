@@ -1,5 +1,6 @@
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { FloatingChat } from "@/components/chat/FloatingChat";
+import { createBuddyComplete } from "@/lib/buddyClient";
 
 const PRODUCTS = [
   { name: "Mara Bowl", price: "$48", sub: "Stoneware · set of 2", bg: "#E2C8B5", shape: "#9A3F2C", badge: "New" },
@@ -202,6 +203,7 @@ export default function AcmeStorePage() {
         ]}
         inputPlaceholder="Try: 'jacket for a rainy commute under $200'"
         catalog={PRODUCTS}
+        complete={createBuddyComplete("acme")}
       />
       <IndustrySwitcher currentSlug="acme" />
     </div>
