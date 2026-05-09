@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
-import { BuddyChat } from "@/lib/buddyChat";
+import { BuddyChat, mdInline } from "@/lib/buddyChat";
 
 const SYSTEM_PROMPT = `
 You are Lumen, an AI tutor for Mira (junior at Carnegie HS, taking AP Calculus BC, AP US History, Spanish III, Intro to Python).
@@ -189,7 +189,7 @@ export default function LumenPage() {
                   height: 88,
                 }}
               >
-                <Image src="/assets/ba-icon-white.png" alt="" width={42} height={42} />
+                <span className="text-white font-semibold text-[36px]" style={{ fontFamily: "var(--font-fraunces), serif" }}>L</span>
               </div>
               <h1
                 className="font-semibold text-center -tracking-[0.02em] mt-6 mb-2"
@@ -229,13 +229,13 @@ export default function LumenPage() {
                         t.role === "user" ? "linear-gradient(135deg, #F4A261, #E76F51)" : "#5B3FB5",
                     }}
                   >
-                    {t.role === "user" ? "M" : <Image src="/assets/ba-icon-white.png" alt="" width={18} height={18} />}
+                    {t.role === "user" ? "M" : "L"}
                   </div>
                   <div>
                     <div className="font-semibold text-[13px] mb-1.5" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
                       {t.role === "user" ? "Mira" : "Lumen"}
                     </div>
-                    <div className="text-[15px] leading-[1.65] whitespace-pre-wrap">{t.text}</div>
+                    <div className="text-[15px] leading-[1.65] whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: mdInline(t.text) }} />
                     {t.role === "bot" && (
                       <div className="flex gap-1.5 mt-2.5">
                         {["👍 Helpful", "👎 Not quite", "↻ Try again", "📋 Copy"].map((b) => (
@@ -254,8 +254,8 @@ export default function LumenPage() {
               ))}
               {typing && (
                 <div className="grid grid-cols-[36px_1fr] gap-4">
-                  <div className="w-9 h-9 rounded-[10px] grid place-items-center" style={{ background: "#5B3FB5" }}>
-                    <Image src="/assets/ba-icon-white.png" alt="" width={18} height={18} />
+                  <div className="w-9 h-9 rounded-[10px] grid place-items-center text-white font-semibold text-sm" style={{ background: "#5B3FB5" }}>
+                    L
                   </div>
                   <div>
                     <div className="font-semibold text-[13px] mb-1.5" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
@@ -324,7 +324,7 @@ export default function LumenPage() {
             </div>
           </div>
           <div className="max-w-[780px] mx-auto mt-2 text-center text-[11.5px] text-[#6E667E]">
-            Lumen is in tutor mode — it asks before answering. Toggle off to get direct solutions. Demo only.
+            <b style={{ color: "#5B3FB5" }}>Powered by Buddy Assist</b>
           </div>
         </div>
       </main>

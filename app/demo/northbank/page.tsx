@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
-import { BuddyChat } from "@/lib/buddyChat";
+import { BuddyChat, mdInline } from "@/lib/buddyChat";
 
 const SYSTEM_PROMPT = `
 You are Buddy, the private banking assistant for Adelaide Voss inside Northbank — a personal banking & wealth app.
@@ -337,8 +337,8 @@ export default function NorthbankPage() {
           className="mt-5 bg-white border border-[#DCE2EB] rounded-[10px] p-4.5 grid items-center gap-4.5"
           style={{ gridTemplateColumns: "auto 1fr auto", borderLeft: "4px solid #C9A75A" }}
         >
-          <div className="w-[46px] h-[46px] rounded-[10px] grid place-items-center" style={{ background: "#0E2A47" }}>
-            <Image src="/assets/ba-icon-white.png" alt="" width={22} height={22} />
+          <div className="w-[46px] h-[46px] rounded-[10px] grid place-items-center text-white font-semibold text-[20px]" style={{ background: "#0E2A47", fontFamily: "var(--font-geist), sans-serif" }}>
+            N
           </div>
           <div>
             <h4 className="m-0 mb-1 font-semibold text-sm" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
@@ -362,12 +362,12 @@ export default function NorthbankPage() {
       {/* Buddy panel */}
       <aside className={`bg-white border-l border-[#DCE2EB] flex flex-col overflow-hidden ${collapsed ? "hidden" : ""}`}>
         <div className="px-5 py-4 flex items-center gap-3 text-white" style={{ background: "#0E2A47" }}>
-          <div className="w-[34px] h-[34px] rounded-[9px] grid place-items-center" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(201,167,90,0.4)" }}>
-            <Image src="/assets/ba-icon-white.png" alt="" width={18} height={18} />
+          <div className="w-[34px] h-[34px] rounded-[9px] grid place-items-center text-white font-semibold text-[15px]" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(201,167,90,0.4)", fontFamily: "var(--font-geist), sans-serif" }}>
+            N
           </div>
           <div>
             <h3 className="m-0 font-semibold text-[14.5px]" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
-              Buddy
+              Northbank
             </h3>
             <div className="text-[11.5px] text-white/60">Your private banking assistant</div>
           </div>
@@ -382,12 +382,12 @@ export default function NorthbankPage() {
 
         <div className="px-5 py-2.5 text-[11.5px] flex items-center gap-2" style={{ background: "#FFF8E6", borderBottom: "1px solid #F0E5C2", color: "#6F5722" }}>
           <span style={{ color: "#C9A75A" }}>🔒</span>
-          Encrypted · Buddy never moves money without your written approval. <b>Demo mode.</b>
+          <b>Powered by Buddy Assist</b>
         </div>
 
         <div ref={bbodyRef} className="flex-1 overflow-y-auto px-5 py-4.5 flex flex-col gap-3.5" style={{ background: "#F4F6FA" }}>
           <div className="px-3.5 py-3 rounded-[10px] text-[13.5px] leading-[1.55] max-w-[300px] bg-white border border-[#DCE2EB] self-start" style={{ borderTopLeftRadius: 2 }}>
-            <div className="text-[11px] font-semibold text-[#5C6878] mb-1">Buddy</div>
+            <div className="text-[11px] font-semibold text-[#5C6878] mb-1">Northbank</div>
             Hi Adelaide. I see you&apos;re <b>$2,140 ahead</b> on the month and <b>40%</b> of the way to the 2026 down payment. Want to look at where the gap is, or focus on something else?
           </div>
 
@@ -421,8 +421,8 @@ export default function NorthbankPage() {
                 borderTopRightRadius: m.role === "user" ? 2 : undefined,
               }}
             >
-              {m.role === "bot" && <div className="text-[11px] font-semibold text-[#5C6878] mb-1">Buddy</div>}
-              {m.text}
+              {m.role === "bot" && <div className="text-[11px] font-semibold text-[#5C6878] mb-1">Northbank</div>}
+              <span dangerouslySetInnerHTML={{ __html: mdInline(m.text) }} />
               {m.role === "bot" && m.src && (
                 <div className="mt-2 flex gap-1.5 flex-wrap">
                   {["txns.30d", "budgets.json", "goals.yaml"].map((s) => (
@@ -437,7 +437,7 @@ export default function NorthbankPage() {
 
           {typing && (
             <div className="px-3.5 py-3 rounded-[10px] max-w-[300px] bg-white border border-[#DCE2EB] self-start" style={{ borderTopLeftRadius: 2 }}>
-              <div className="text-[11px] font-semibold text-[#5C6878] mb-1">Buddy</div>
+              <div className="text-[11px] font-semibold text-[#5C6878] mb-1">Northbank</div>
               <div className="inline-flex gap-1 py-1.5">
                 <span className="typing-dot" style={{ background: "#5C6878" }} />
                 <span className="typing-dot" style={{ background: "#5C6878", animationDelay: ".15s" }} />

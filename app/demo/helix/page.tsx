@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
-import { BuddyChat } from "@/lib/buddyChat";
+import { BuddyChat, mdInline } from "@/lib/buddyChat";
 
 const SYSTEM_PROMPT = `
 You are Buddy, the support copilot inside Helix Support — a helpdesk for SaaS customer support agents.
@@ -361,12 +361,12 @@ export default function HelixPage() {
         className={`bg-white border-l border-[#E4E7EC] flex flex-col overflow-hidden ${collapsed ? "hidden" : ""}`}
       >
         <div className="px-4.5 py-3.5 border-b border-[#E4E7EC] flex items-center gap-2.5">
-          <div className="w-[30px] h-[30px] rounded-lg grid place-items-center" style={{ background: "#2FC463" }}>
-            <Image src="/assets/ba-icon-white.png" alt="" width={16} height={16} />
+          <div className="w-[30px] h-[30px] rounded-lg grid place-items-center text-white font-semibold text-[14px]" style={{ background: "#0F62FE", fontFamily: "var(--font-geist), sans-serif" }}>
+            H
           </div>
           <div>
             <h3 className="m-0 font-semibold text-[14.5px]" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
-              Buddy
+              Helix Assistant
             </h3>
             <div className="text-[11.5px] text-[#5C6470]">Reading ticket #4821 + Acme history</div>
           </div>
@@ -440,7 +440,7 @@ export default function HelixPage() {
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2FC463" }} />
               Drafted reply · review before sending
             </div>
-            <div className="text-[13px] leading-[1.55] whitespace-pre-wrap text-[#0E1116]">{draft}</div>
+            <div className="text-[13px] leading-[1.55] whitespace-pre-wrap text-[#0E1116]" dangerouslySetInnerHTML={{ __html: mdInline(draft) }} />
             <div className="flex gap-1.5 mt-2.5">
               <button
                 type="button"
@@ -496,13 +496,13 @@ export default function HelixPage() {
               >
                 {b.role === "user" ? "You" : "Buddy"}
               </h4>
-              <div className="text-[13px] leading-[1.55] whitespace-pre-wrap">{b.text}</div>
+              <div className="text-[13px] leading-[1.55] whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: mdInline(b.text) }} />
             </div>
           ))}
           {typing && (
             <div className="p-3.5 rounded-[10px] border border-[#E4E7EC]" style={{ background: "#FBFBFD" }}>
               <h4 className="m-0 mb-2 font-semibold text-[13px]" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
-                Buddy
+                Helix
               </h4>
               <div className="flex gap-1 py-1.5">
                 <span className="typing-dot" style={{ background: "#5C6470" }} />

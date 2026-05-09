@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
-import { BuddyChat } from "@/lib/buddyChat";
+import { BuddyChat, mdInline } from "@/lib/buddyChat";
 
 const SYSTEM_PROMPT = `
 You are Buddy, the marketing intelligence assistant inside Pulse — a marketing analytics & campaign tool.
@@ -219,7 +219,7 @@ export default function PulsePage() {
             <span className="w-[18px] h-[18px] rounded-[5px] grid place-items-center" style={{ background: "#2FC463" }}>
               <Image src="/assets/ba-icon-white.png" alt="" width={11} height={11} className="w-[11px] h-[11px]" />
             </span>
-            Ask Buddy
+            Assistant
             <kbd className="font-mono text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white">⌘B</kbd>
           </button>
         </div>
@@ -234,8 +234,8 @@ export default function PulsePage() {
           }}
         >
           <div className="px-7 py-4.5 border-b border-[#E6E8EC] flex items-center gap-3.5" style={{ background: "linear-gradient(180deg, #fff, #FBFBFD)" }}>
-            <div className="w-[34px] h-[34px] rounded-[10px] grid place-items-center" style={{ background: "#2FC463", boxShadow: "0 0 0 4px rgba(47,196,99,0.15)" }}>
-              <Image src="/assets/ba-icon-white.png" alt="" width={18} height={18} className="w-[18px] h-[18px]" />
+            <div className="w-[34px] h-[34px] rounded-[10px] grid place-items-center text-white font-semibold text-[15px]" style={{ background: "#5B5EF0", boxShadow: "0 0 0 4px rgba(91,94,240,0.15)" }}>
+              P
             </div>
             <input
               ref={inputRef}
@@ -285,16 +285,16 @@ export default function PulsePage() {
             {messages.map((m, i) => (
               <div key={i} className="grid grid-cols-[32px_1fr] gap-3 items-start">
                 <div
-                  className="w-8 h-8 rounded-[9px] grid place-items-center text-white font-semibold text-xs"
-                  style={{ background: m.role === "bot" ? "#2FC463" : "#0B0F14" }}
+                  className="w-8 h-8 rounded-[9px] grid place-items-center text-white font-semibold text-[13px]"
+                  style={{ background: m.role === "bot" ? "#5B5EF0" : "#0B0F14" }}
                 >
-                  {m.role === "bot" ? <Image src="/assets/ba-icon-white.png" alt="" width={16} height={16} /> : "N"}
+                  {m.role === "bot" ? "P" : "N"}
                 </div>
                 <div>
                   <div className="font-semibold text-[12.5px] mb-1" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
-                    {m.role === "bot" ? "Buddy" : "You"}
+                    {m.role === "bot" ? "Pulse" : "You"}
                   </div>
-                  <div className="text-[14px] leading-[1.55] whitespace-pre-wrap">{m.text}</div>
+                  <div className="text-[14px] leading-[1.55] whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: mdInline(m.text) }} />
                   {m.src && (
                     <div className="mt-2 flex gap-1.5 flex-wrap">
                       {["meta_ads.csv", "ga4.events", "stripe.charges"].map((s) => (
@@ -309,11 +309,11 @@ export default function PulsePage() {
             ))}
             {typing && (
               <div className="grid grid-cols-[32px_1fr] gap-3 items-start">
-                <div className="w-8 h-8 rounded-[9px] grid place-items-center" style={{ background: "#2FC463" }}>
-                  <Image src="/assets/ba-icon-white.png" alt="" width={16} height={16} />
+                <div className="w-8 h-8 rounded-[9px] grid place-items-center text-white font-semibold text-[13px]" style={{ background: "#5B5EF0" }}>
+                  P
                 </div>
                 <div>
-                  <div className="font-semibold text-[12.5px] mb-1" style={{ fontFamily: "var(--font-geist), sans-serif" }}>Buddy</div>
+                  <div className="font-semibold text-[12.5px] mb-1" style={{ fontFamily: "var(--font-geist), sans-serif" }}>Pulse</div>
                   <div className="flex gap-1 py-1.5">
                     <span className="typing-dot" style={{ background: "#6A7280" }} />
                     <span className="typing-dot" style={{ background: "#6A7280", animationDelay: ".15s" }} />
@@ -326,7 +326,7 @@ export default function PulsePage() {
 
           <div className="px-7 py-2.5 border-t border-[#E6E8EC] text-[11px] text-[#6A7280] flex justify-between" style={{ background: "#F4F5F7" }}>
             <span>
-              Buddy reads from your connected sources — Meta, Google, GA4, Stripe, Notion. <b style={{ color: "#1E9E4B" }}>Demo only.</b>
+              <b style={{ color: "#1E9E4B" }}>Powered by Buddy Assist</b>
             </span>
             <span>
               Press <b>Esc</b> to close
@@ -471,7 +471,7 @@ export default function PulsePage() {
             <h3 className="m-0 mb-1 text-[15px] font-semibold -tracking-[0.005em]" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
               Anomalies & opportunities
             </h3>
-            <div className="text-xs text-[#6A7280] mb-3.5">Buddy flagged these in the last 24 hours</div>
+            <div className="text-xs text-[#6A7280] mb-3.5">Pulse flagged these in the last 24 hours</div>
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr>

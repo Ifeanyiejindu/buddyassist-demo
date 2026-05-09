@@ -23,6 +23,8 @@ interface FloatingChatProps {
   greeting: string;
   introLines: string[];
   suggests: Suggest[];
+  /** Optional input placeholder; defaults to "Ask {brand}…". */
+  inputPlaceholder?: string;
   /** Catalog of named items the AI can reference; cards render under the bubble when names match. */
   catalog?: ProductCard[];
   /** Hex strings overriding the chat panel accents. */
@@ -31,7 +33,7 @@ interface FloatingChatProps {
     sendBg?: string; // send-button green
     panelBg?: string;
   };
-  /** Footer disclaimer line. */
+  /** Footer line; defaults to "Powered by Buddy Assist". */
   footer?: ReactNode;
   /** Optional chat completion provider — return the assistant's reply text. */
   complete?: (messages: { role: string; content: string }[]) => Promise<string>;
@@ -43,6 +45,7 @@ export function FloatingChat({
   greeting,
   introLines,
   suggests,
+  inputPlaceholder,
   catalog = [],
   theme = {},
   footer,
@@ -145,7 +148,7 @@ export function FloatingChat({
             className="absolute right-[72px] top-1/2 -translate-y-1/2 bg-white text-[#191815] px-3.5 py-2 rounded-[14px] rounded-br whitespace-nowrap text-xs border border-[#E8E3D9]"
             style={{ boxShadow: "0 6px 18px rgba(0,0,0,0.10)" }}
           >
-            <b className="text-[#1E9E4B] font-semibold">Buddy:</b> {greeting}
+            {greeting}
           </span>
         )}
       </button>
@@ -278,7 +281,7 @@ export function FloatingChat({
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={`Ask ${brand} anything…`}
+              placeholder={inputPlaceholder ?? `Ask ${brand} anything…`}
               autoComplete="off"
               className="flex-1 border-0 outline-none font-inherit text-[13.5px] bg-transparent px-1 py-2.5 text-[#191815] placeholder:text-[#8A847A]"
             />
@@ -294,11 +297,7 @@ export function FloatingChat({
           </form>
 
           <div className="px-3.5 py-2 text-[10px] text-[#8A847A] text-center border-t border-[#E8E3D9] bg-white">
-            {footer ?? (
-              <>
-                Buddy can make mistakes — every claim cites a source. <b className="text-[#1E9E4B]">Demo</b>.
-              </>
-            )}
+            {footer ?? <b className="text-[#1E9E4B]">Powered by Buddy Assist</b>}
           </div>
         </div>
       )}

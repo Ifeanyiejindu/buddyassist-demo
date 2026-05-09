@@ -182,17 +182,17 @@ export default function AcmeStorePage() {
 
       <footer className="px-7 py-10 border-t border-[#E8E3D9] text-xs text-[#8A847A]">
         <div className="max-w-[1280px] mx-auto flex justify-between flex-wrap gap-3.5">
-          <span>© 2026 Acme — A demo storefront for Buddy Assist.</span>
+          <span>© 2026 Acme — Demo storefront powered by Buddy Assist.</span>
           <span>Care · Shipping · Returns · Press</span>
         </div>
       </footer>
 
       <FloatingChat
         systemPrompt={SYSTEM_PROMPT}
-        brand="Buddy at Acme"
+        brand="Acme Assistant"
         greeting="Need a hand finding something?"
         introLines={[
-          "Hi — I'm Buddy. I know the catalog, your cart, returns, and shipping windows. Ask me anything, or pick a starter:",
+          "Hi — I can help with the catalog, your cart, returns, and shipping windows. Ask me anything, or pick a starter:",
         ]}
         suggests={[
           { pill: "Gift", text: "Help me pick a housewarming gift under $100." },
@@ -200,6 +200,7 @@ export default function AcmeStorePage() {
           { pill: "Ship", text: "Will the Ember Lamp arrive before Friday in NYC?" },
           { pill: "Care", text: "How do I clean stoneware?" },
         ]}
+        inputPlaceholder="Try: 'jacket for a rainy commute under $200'"
         catalog={PRODUCTS}
       />
       <IndustrySwitcher currentSlug="acme" />

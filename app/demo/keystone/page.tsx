@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
-import { BuddyChat } from "@/lib/buddyChat";
+import { BuddyChat, mdInline } from "@/lib/buddyChat";
 
 const SYSTEM_PROMPT = `
 You are the Keystone Realty AI concierge for a Brooklyn home buyer. You help users translate a fuzzy lifestyle ("good school + home office + walkable + under $1.5M") into specific listings, school zones, neighborhood character, and rough mortgage math.
@@ -338,7 +338,7 @@ export default function KeystonePage() {
           className="absolute inset-0 rounded-full"
           style={{ background: "#1F4D3E", opacity: 0.4, animation: "ks-pulse 2.4s infinite" }}
         />
-        <Image src="/assets/ba-icon-white.png" alt="" width={28} height={28} />
+        <span className="relative text-white font-semibold text-[22px]" style={{ fontFamily: "var(--font-fraunces), serif" }}>K</span>
       </button>
 
       {open && (
@@ -347,14 +347,14 @@ export default function KeystonePage() {
           style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.18)", height: 580, maxHeight: "calc(100vh - 140px)" }}
         >
           <div className="px-4.5 py-3.5 flex items-center gap-2.5 text-white" style={{ background: "#1F4D3E" }}>
-            <div className="w-8 h-8 rounded-lg grid place-items-center" style={{ background: "rgba(255,255,255,0.18)" }}>
-              <Image src="/assets/ba-icon-white.png" alt="" width={16} height={16} />
+            <div className="w-8 h-8 rounded-lg grid place-items-center text-white font-semibold text-[15px]" style={{ background: "rgba(255,255,255,0.18)", fontFamily: "var(--font-fraunces), serif" }}>
+              K
             </div>
             <div>
               <h3 className="m-0 font-semibold text-sm" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
                 Keystone Concierge
               </h3>
-              <div className="text-[11.5px] text-white/70">Search by lifestyle, not filters · powered by Buddy</div>
+              <div className="text-[11.5px] text-white/70">Powered by Buddy Assist</div>
             </div>
             <button
               type="button"
@@ -401,7 +401,7 @@ export default function KeystonePage() {
                   borderTopRightRadius: m.role === "user" ? 2 : undefined,
                 }}
               >
-                {m.text}
+                <span dangerouslySetInnerHTML={{ __html: mdInline(m.text) }} />
               </div>
             ))}
 

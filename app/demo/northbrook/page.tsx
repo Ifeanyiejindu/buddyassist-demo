@@ -100,7 +100,7 @@ export default function NorthbrookPage() {
         {
           who: "buddy",
           text:
-            "Hi — this is Buddy at Northbrook. Are you calling about an appointment, a refill, or something else? I can also help if you're not sure.",
+            "Hi — you've reached the Northbrook desk. Are you calling about an appointment, a refill, or something else? I can also help if you're not sure.",
         },
       ]);
     }, 500);
@@ -190,7 +190,7 @@ export default function NorthbrookPage() {
               style={{ background: "#2F6D8C" }}
             >
               <span className="w-3.5 h-3.5 rounded-full bg-white grid place-items-center text-[9px]" style={{ color: "#2F6D8C" }}>☎</span>
-              Talk to Buddy now
+              Call our desk
             </button>
             <button
               type="button"
@@ -304,10 +304,10 @@ export default function NorthbrookPage() {
               A new front door
             </div>
             <h2 className="m-0 mb-4.5 font-medium" style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 48, lineHeight: 1.05 }}>
-              Call Buddy<br />before you call us.
+              Call our desk<br />before you call us.
             </h2>
             <p className="text-white/70 max-w-[48ch] m-0 mb-5 text-base">
-              Buddy is our 24/7 care assistant. It books appointments, triages symptoms against your chart, refills prescriptions, and tells you when something needs a doctor right now. Powered by Buddy Assist — no menus, no holds, just a conversation.
+              Our desk is a 24/7 assistant. It books appointments, triages symptoms against your chart, refills prescriptions, and tells you when something needs a doctor right now. Powered by Buddy Assist — no menus, no holds, just a conversation.
             </p>
             <div className="grid grid-cols-2 gap-6 mt-6">
               <div className="border-l border-white/[0.18] pl-4">
@@ -344,7 +344,7 @@ export default function NorthbrookPage() {
               className="mt-auto rounded-[10px] py-3 text-white font-medium text-sm cursor-pointer text-center"
               style={{ background: "#2F6D8C" }}
             >
-              📞 Tap to talk to Buddy
+              📞 Tap to call our desk
             </button>
           </div>
         </div>
@@ -357,22 +357,22 @@ export default function NorthbrookPage() {
         </div>
       </footer>
 
-      {/* Call FAB (pill) */}
+      {/* Call FAB (pill) — Northbrook "+" mark */}
       <button
         type="button"
         onClick={openCall}
         className="fixed right-6 bottom-6 z-[9000] flex items-center gap-3 pl-2 pr-4.5 py-2 bg-white border border-[#E3E7EA] rounded-full cursor-pointer transition-transform hover:-translate-y-0.5"
         style={{ boxShadow: "0 14px 30px rgba(14,42,63,0.14)" }}
-        aria-label="Call Buddy"
+        aria-label="Call our desk"
       >
         <span
-          className="w-11 h-11 rounded-full grid place-items-center"
-          style={{ background: "#2FC463", boxShadow: "0 0 0 4px rgba(47,196,99,0.18)" }}
+          className="w-11 h-11 rounded-full grid place-items-center text-white"
+          style={{ background: "#2F6D8C", boxShadow: "0 0 0 4px rgba(31,77,77,0.18)" }}
         >
-          <Image src="/assets/ba-icon-white.png" alt="" width={22} height={22} className="w-[22px] h-[22px]" />
+          <span style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 24, fontWeight: 500, lineHeight: 1 }}>+</span>
         </span>
         <span className="flex flex-col leading-[1.15] text-left">
-          <b className="text-[13.5px] font-semibold -tracking-[0.005em]">Call Buddy</b>
+          <b className="text-[13.5px] font-semibold -tracking-[0.005em]">Call our desk</b>
           <small className="text-[11px] text-[#5F7282] flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-[#2FC463]" />
             24/7 · 22s avg wait
@@ -403,19 +403,19 @@ export default function NorthbrookPage() {
               style={{ background: "linear-gradient(180deg, #EAF2F6, #fff)" }}
             >
               <div
-                className="w-[104px] h-[104px] rounded-full grid place-items-center mx-auto mb-4"
+                className="w-[104px] h-[104px] rounded-full grid place-items-center mx-auto mb-4 text-white"
                 style={{
-                  background: "#2FC463",
+                  background: "#2F6D8C",
                   animation: "nb-ring-pulse 1.8s ease-out infinite",
                 }}
               >
-                <Image src="/assets/ba-icon-white.png" alt="" width={50} height={50} />
+                <span style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 56, fontWeight: 500, lineHeight: 1 }}>+</span>
               </div>
               <h3
                 className="font-medium m-0 mb-1 text-[26px] -tracking-[0.01em]"
                 style={{ fontFamily: "var(--font-fraunces), serif" }}
               >
-                Buddy · Northbrook
+                Northbrook · Desk
               </h3>
               <div className="text-[13px] text-[#5F7282] inline-flex items-center gap-1.5">
                 <span className="w-[7px] h-[7px] rounded-full bg-[#2FC463]" />
@@ -538,7 +538,7 @@ export default function NorthbrookPage() {
             </div>
 
             <div className="text-center px-2.5 py-2.5 text-[11px] text-[#5F7282]" style={{ background: "#EAF2F6" }}>
-              Demo line · powered by <b style={{ color: "#1E9E4B" }}>Buddy Assist</b> · no real PHI is stored
+              <b style={{ color: "#1E9E4B" }}>Powered by Buddy Assist</b>
             </div>
           </div>
         </div>

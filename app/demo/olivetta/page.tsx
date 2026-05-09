@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
-import { BuddyChat } from "@/lib/buddyChat";
+import { BuddyChat, mdInline } from "@/lib/buddyChat";
 
 const SYSTEM_PROMPT = `
 You are Renata Falci, the sommelier and dining host at Olivella — a neighbourhood wood-fired Italian trattoria in Carroll Gardens, Brooklyn.
@@ -343,7 +343,7 @@ export default function OlivellaPage() {
                     <div className="mb-1 italic text-sm" style={{ color: "#2C3A1B", fontFamily: "var(--font-fraunces), serif" }}>
                       Renata
                     </div>
-                    <div className="whitespace-pre-wrap">{m.text}</div>
+                    <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: mdInline(m.text) }} />
                   </div>
                 ),
               )}
@@ -502,7 +502,7 @@ export default function OlivellaPage() {
         style={{ letterSpacing: "0.04em" }}
       >
         <span>© Olivella · 183 Smith St, Brooklyn · (718) 555-0143</span>
-        <span>Demo site · powered by Buddy Assist</span>
+        <span><b className="text-[#2C3A1B]">Powered by Buddy Assist</b></span>
       </footer>
 
       <IndustrySwitcher currentSlug="olivetta" />

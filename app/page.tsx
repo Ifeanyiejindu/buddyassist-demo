@@ -47,7 +47,7 @@ export default function Home() {
           </p>
 
           <div
-            className="mt-9 flex gap-3 flex-wrap opacity-0"
+            className="mt-9 mb-16 flex gap-3 flex-wrap opacity-0"
             style={{ animation: "ba-rise 0.8s cubic-bezier(0.2,0.8,0.2,1) 1.05s forwards" }}
           >
             <a href="#industries" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-green text-ink no-underline font-grotesk text-[13px] font-medium transition-transform hover:-translate-y-px">

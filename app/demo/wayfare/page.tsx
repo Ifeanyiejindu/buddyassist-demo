@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { BuddyChat } from "@/lib/buddyChat";
 
@@ -53,8 +52,126 @@ const QUICKSETS = [
   },
 ];
 
+interface Place {
+  match: string[];
+  name: string;
+  tag: string;
+  sub: string;
+  img: string;
+}
+
+const PLACES: Place[] = [
+  { match: ["memmo alfama"], name: "Memmo Alfama Hotel", tag: "Hotel", sub: "Alfama · 4★", img: "https://picsum.photos/seed/memmo-alfama/600/360" },
+  { match: ["casa do bairro"], name: "Casa do Bairro", tag: "Guesthouse", sub: "Graça · $95/night", img: "https://picsum.photos/seed/casa-do-bairro/600/360" },
+  { match: ["hotel sotão", "hotel sotao"], name: "Hotel Sotão", tag: "Hotel", sub: "Bairro Alto · 4★", img: "https://picsum.photos/seed/hotel-sotao/600/360" },
+  { match: ["pois cafe", "pois café"], name: "Pois Café", tag: "Café", sub: "Alfama · €", img: "https://picsum.photos/seed/pois-cafe/600/360" },
+  { match: ["taberna da rua das flores"], name: "Taberna da Rua das Flores", tag: "Restaurant", sub: "Chiado · €€", img: "https://picsum.photos/seed/taberna-flores/600/360" },
+  { match: ["casamento"], name: "Casamento", tag: "Restaurant", sub: "Seafood rice · €€", img: "https://picsum.photos/seed/casamento-lisbon/600/360" },
+  { match: ["cervejaria patrícia", "cervejaria patricia"], name: "Cervejaria Patrícia", tag: "Restaurant", sub: "Clams · €€", img: "https://picsum.photos/seed/cervejaria-patricia/600/360" },
+  { match: ["time out market"], name: "Time Out Market", tag: "Food hall", sub: "Cais do Sodré · €€", img: "https://picsum.photos/seed/time-out-market/600/360" },
+  { match: ["pastéis de belém", "pasteis de belem"], name: "Pastéis de Belém", tag: "Bakery", sub: "Belém · since 1837", img: "https://picsum.photos/seed/pasteis-belem/600/360" },
+  { match: ["jerónimos monastery", "jeronimos monastery"], name: "Jerónimos Monastery", tag: "Landmark", sub: "Belém · UNESCO", img: "https://picsum.photos/seed/jeronimos/600/360" },
+  { match: ["belém tower", "belem tower"], name: "Belém Tower", tag: "Landmark", sub: "Belém · 16th c.", img: "https://picsum.photos/seed/belem-tower/600/360" },
+  { match: ["são jorge castle", "sao jorge castle"], name: "São Jorge Castle", tag: "Landmark", sub: "Alfama · hilltop", img: "https://picsum.photos/seed/sao-jorge/600/360" },
+  { match: ["lx factory"], name: "LX Factory", tag: "District", sub: "Alcântara · art + shops", img: "https://picsum.photos/seed/lx-factory/600/360" },
+  { match: ["costa da caparica"], name: "Costa da Caparica", tag: "Beach", sub: "45 min by bus", img: "https://picsum.photos/seed/costa-caparica/600/360" },
+  { match: ["cha-cha", "chiringuito"], name: "Cha-Cha Beach Bar", tag: "Beach bar", sub: "Caparica · chiringuito", img: "https://picsum.photos/seed/cha-cha-beach/600/360" },
+  { match: ["miradouro da senhora do monte", "senhora do monte"], name: "Miradouro Senhora do Monte", tag: "Viewpoint", sub: "Graça · sunset", img: "https://picsum.photos/seed/senhora-monte/600/360" },
+  { match: ["príncipe real", "principe real"], name: "Príncipe Real", tag: "Neighborhood", sub: "Younger, artsier", img: "https://picsum.photos/seed/principe-real/600/360" },
+  { match: ["sintra"], name: "Sintra", tag: "Day trip", sub: "30 min by train", img: "https://picsum.photos/seed/sintra-town/600/360" },
+  { match: ["pena palace"], name: "Pena Palace", tag: "Palace", sub: "Sintra · ridge-top", img: "https://picsum.photos/seed/pena-palace/600/360" },
+  { match: ["quinta da regaleira"], name: "Quinta da Regaleira", tag: "Garden", sub: "Sintra · wells + grottoes", img: "https://picsum.photos/seed/quinta-regaleira/600/360" },
+  { match: ["alfama"], name: "Alfama", tag: "District", sub: "Old quarter", img: "https://picsum.photos/seed/alfama-district/600/360" },
+  { match: ["belém", "belem"], name: "Belém", tag: "District", sub: "Riverside · monuments", img: "https://picsum.photos/seed/belem-district/600/360" },
+];
+
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function formatRich(text: string): string {
+  const safe = escapeHtml(text);
+  const withBold = safe.replace(/\*\*([^*\n]+?)\*\*/g, "<b>$1</b>");
+  return withBold
+    .split(/\n{2,}/)
+    .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
+function findPlaces(text: string, exclude: Set<string>) {
+  const lower = text.toLowerCase();
+  const found: Place[] = [];
+  const seen = new Set<string>();
+  for (const p of PLACES) {
+    if (exclude.has(p.name)) continue;
+    for (const m of p.match) {
+      if (lower.includes(m) && !seen.has(p.name)) {
+        found.push(p);
+        seen.add(p.name);
+        break;
+      }
+    }
+  }
+  return { places: found.slice(0, 8), names: seen };
+}
+
+function renderPlaces(places: Place[]): string {
+  if (!places.length) return "";
+  const cards = places
+    .map(
+      (p) => `
+        <button class="place-card" data-name="${escapeHtml(p.name)}">
+          <div class="ph" style="background-image:url('${p.img}')">
+            <span class="tag">${escapeHtml(p.tag)}</span>
+            <span class="save" aria-label="Save">♡</span>
+          </div>
+          <div class="info"><div class="nm">${escapeHtml(p.name)}</div><div class="sub">${escapeHtml(p.sub)}</div></div>
+        </button>`,
+    )
+    .join("");
+  return `<div class="places-row">${cards}</div>`;
+}
+
+/**
+ * Build the bot turn HTML: paragraph + bold render, plus a row of
+ * picture cards injected after each `**Day N**` heading. Falls back
+ * to a single trailing row if the response has no day headings.
+ */
+function buildResponseHTML(text: string): string {
+  const dayRegex = /\*\*\s*(Day\s*\d+[^*\n]*)\*\*/gi;
+  const matches = [...text.matchAll(dayRegex)];
+  if (matches.length === 0) {
+    let html = formatRich(text);
+    const { places } = findPlaces(text, new Set());
+    html += renderPlaces(places);
+    return html;
+  }
+  let out = "";
+  const used = new Set<string>();
+  if ((matches[0].index ?? 0) > 0) {
+    const intro = text.slice(0, matches[0].index ?? 0).trim();
+    if (intro) out += formatRich(intro);
+  }
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const start = (m.index ?? 0) + m[0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index ?? text.length : text.length;
+    const heading = m[1].trim();
+    const body = text
+      .slice(start, end)
+      .replace(/^\s*[:\-—]?\s*\n?/, "")
+      .trim();
+    out += `<p><b>${escapeHtml(heading)}</b></p>`;
+    if (body) out += formatRich(body);
+    const { places, names } = findPlaces(body, used);
+    names.forEach((n) => used.add(n));
+    out += renderPlaces(places);
+  }
+  return out;
+}
+
 export default function WayfarePage() {
-  const [turns, setTurns] = useState<{ role: "bot" | "user"; text: string }[]>([]);
+  const [turns, setTurns] = useState<{ role: "bot" | "user"; text: string; html?: string }[]>([]);
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState("");
   const convoRef = useRef<HTMLDivElement | null>(null);
@@ -64,6 +181,37 @@ export default function WayfarePage() {
   useEffect(() => {
     if (convoRef.current) convoRef.current.scrollTop = convoRef.current.scrollHeight;
   }, [turns, typing]);
+
+  // Wire up place-card click handlers + save toggles whenever bot HTML changes.
+  useEffect(() => {
+    const root = convoRef.current;
+    if (!root) return;
+    const cards = root.querySelectorAll<HTMLElement>(".place-card");
+    const saveCleanups: Array<() => void> = [];
+    cards.forEach((card) => {
+      const onClick = () => {
+        const name = card.getAttribute("data-name");
+        if (name) {
+          send(`Tell me more about ${name} — why it's worth it, what to order or see, and the best time to go.`);
+        }
+      };
+      card.addEventListener("click", onClick);
+      saveCleanups.push(() => card.removeEventListener("click", onClick));
+
+      const save = card.querySelector<HTMLElement>(".save");
+      if (save) {
+        const onSave = (e: Event) => {
+          e.stopPropagation();
+          save.classList.toggle("on");
+          save.textContent = save.classList.contains("on") ? "♥" : "♡";
+        };
+        save.addEventListener("click", onSave);
+        saveCleanups.push(() => save.removeEventListener("click", onSave));
+      }
+    });
+    return () => saveCleanups.forEach((fn) => fn());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turns]);
 
   function autosize() {
     const ta = taRef.current;
@@ -80,21 +228,29 @@ export default function WayfarePage() {
     requestAnimationFrame(autosize);
     setTyping(true);
     let botIdx = -1;
-    await chat.current.send(v, {
+    const finalText = await chat.current.send(v, {
       onToken: (full) => {
         setTyping(false);
         setTurns((t) => {
           if (botIdx === -1) {
-            const next = [...t, { role: "bot" as const, text: full }];
+            const next = [...t, { role: "bot" as const, text: full, html: formatRich(full) }];
             botIdx = next.length - 1;
             return next;
           }
           const next = [...t];
-          next[botIdx] = { ...next[botIdx], text: full };
+          next[botIdx] = { ...next[botIdx], text: full, html: formatRich(full) };
           return next;
         });
       },
     });
+    if (finalText && botIdx !== -1) {
+      const richHtml = buildResponseHTML(finalText);
+      setTurns((t) => {
+        const next = [...t];
+        next[botIdx] = { ...next[botIdx], text: finalText, html: richHtml };
+        return next;
+      });
+    }
   }
 
   const showWelcome = turns.length === 0;
@@ -120,8 +276,13 @@ export default function WayfarePage() {
     >
       {/* Sidebar */}
       <aside className="hidden md:flex bg-[#1A1A1A] text-white p-4.5 flex-col gap-3.5 overflow-y-auto">
-        <div className="flex items-center gap-2.5 px-2 py-1.5" style={{ fontFamily: "var(--font-bricolage), sans-serif", fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em" }}>
-          <div className="w-[30px] h-[30px] rounded-lg grid place-items-center font-bold" style={{ background: "#E76F51" }}>W</div>
+        <div
+          className="flex items-center gap-2.5 px-2 py-1.5"
+          style={{ fontFamily: "var(--font-bricolage), sans-serif", fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em" }}
+        >
+          <div className="w-[30px] h-[30px] rounded-lg grid place-items-center font-bold" style={{ background: "#E76F51" }}>
+            W
+          </div>
           Wayfare
         </div>
         <button
@@ -168,7 +329,7 @@ export default function WayfarePage() {
         <div className="px-7 py-3.5 border-b border-[#E5DFD3] bg-[#F8F5F0] flex items-center gap-3.5">
           <span className="px-3 py-1.5 border border-[#E5DFD3] rounded-full text-[11.5px] text-[#7A736A] inline-flex items-center gap-1.5 bg-white">
             <span className="w-1.5 h-1.5 rounded-full bg-[#2FC463]" />
-            Buddy · live
+            Wayfare · live
           </span>
           <span className="text-[18px] font-semibold ml-1" style={{ fontFamily: "var(--font-bricolage), sans-serif" }}>
             Lisbon · 4 days
@@ -195,10 +356,17 @@ export default function WayfarePage() {
           {showWelcome ? (
             <div className="flex-1 flex flex-col items-center justify-center px-7 py-10 gap-7 text-center">
               <div
-                className="w-16 h-16 rounded-[20px] grid place-items-center"
-                style={{ background: "#2FC463", boxShadow: "0 14px 30px rgba(47,196,99,0.25)" }}
+                className="w-16 h-16 rounded-[20px] grid place-items-center text-white"
+                style={{
+                  background: "#E76F51",
+                  boxShadow: "0 14px 30px rgba(231,111,81,0.28)",
+                  fontFamily: "var(--font-bricolage), sans-serif",
+                  fontSize: 30,
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                }}
               >
-                <Image src="/assets/ba-icon-white.png" alt="" width={34} height={34} />
+                W
               </div>
               <h1
                 className="font-semibold leading-none -tracking-[0.025em] m-0 max-w-[18ch]"
@@ -240,30 +408,41 @@ export default function WayfarePage() {
                 >
                   <div
                     className="w-9 h-9 rounded-[10px] grid place-items-center font-semibold text-[13px] text-white"
-                    style={{ background: t.role === "bot" ? "#2FC463" : "#1A1A1A" }}
+                    style={{
+                      background: t.role === "bot" ? "#E76F51" : "#1A1A1A",
+                      fontFamily: t.role === "bot" ? "var(--font-bricolage), sans-serif" : undefined,
+                      fontWeight: t.role === "bot" ? 700 : 600,
+                      fontSize: t.role === "bot" ? 15 : 13,
+                    }}
                   >
-                    {t.role === "bot" ? (
-                      <Image src="/assets/ba-icon-white.png" alt="" width={18} height={18} />
-                    ) : (
-                      "S"
-                    )}
+                    {t.role === "bot" ? "W" : "S"}
                   </div>
                   <div>
                     <div className="text-[13.5px] font-semibold mb-1" style={{ fontFamily: "var(--font-bricolage), sans-serif" }}>
-                      {t.role === "bot" ? "Buddy" : "You"}
+                      {t.role === "bot" ? "Wayfare" : "You"}
                     </div>
-                    <div className="text-[15px] leading-[1.6] whitespace-pre-wrap text-[#1A1A1A]">{t.text}</div>
+                    {t.role === "bot" ? (
+                      <div
+                        className="text-[15px] leading-[1.6] text-[#1A1A1A] wf-body"
+                        dangerouslySetInnerHTML={{ __html: t.html ?? "" }}
+                      />
+                    ) : (
+                      <div className="text-[15px] leading-[1.6] whitespace-pre-wrap text-[#1A1A1A]">{t.text}</div>
+                    )}
                   </div>
                 </div>
               ))}
               {typing && (
                 <div className="max-w-[780px] mx-auto px-7 w-full grid grid-cols-[36px_1fr] gap-3.5 items-start">
-                  <div className="w-9 h-9 rounded-[10px] grid place-items-center" style={{ background: "#2FC463" }}>
-                    <Image src="/assets/ba-icon-white.png" alt="" width={18} height={18} />
+                  <div
+                    className="w-9 h-9 rounded-[10px] grid place-items-center text-white font-bold text-[15px]"
+                    style={{ background: "#E76F51", fontFamily: "var(--font-bricolage), sans-serif" }}
+                  >
+                    W
                   </div>
                   <div>
                     <div className="text-[13.5px] font-semibold mb-1" style={{ fontFamily: "var(--font-bricolage), sans-serif" }}>
-                      Buddy
+                      Wayfare
                     </div>
                     <div className="flex gap-1 py-1.5">
                       <span className="typing-dot" style={{ background: "#7A736A" }} />
@@ -277,7 +456,10 @@ export default function WayfarePage() {
           )}
         </div>
 
-        <div className="border-t border-[#E5DFD3] px-7 pt-4.5 pb-5.5" style={{ background: "linear-gradient(0deg, #F8F5F0, rgba(248,245,240,0.6))" }}>
+        <div
+          className="border-t border-[#E5DFD3] px-7 pt-4.5 pb-5.5"
+          style={{ background: "linear-gradient(0deg, #F8F5F0, rgba(248,245,240,0.6))" }}
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -311,7 +493,7 @@ export default function WayfarePage() {
                   send(input);
                 }
               }}
-              placeholder="Tell Buddy where you want to go, who's coming, your budget — anything, really."
+              placeholder="Tell us where you want to go, who's coming, your budget — anything, really."
               className="flex-1 border-0 outline-none resize-none text-[15px] leading-[1.5] bg-transparent text-[#1A1A1A] min-h-[24px] max-h-[160px] py-1"
             />
             <button
@@ -325,12 +507,99 @@ export default function WayfarePage() {
             </button>
           </form>
           <div className="max-w-[780px] mx-auto mt-2 text-[11px] text-[#7A736A] text-center">
-            Buddy can make mistakes — confirm prices and availability before booking. <b style={{ color: "#1E9E4B" }}>Demo build powered by Buddy Assist.</b>
+            <b style={{ color: "#1E9E4B" }}>Powered by Buddy Assist</b>
           </div>
         </div>
       </section>
 
       <IndustrySwitcher currentSlug="wayfare" />
+
+      <style jsx global>{`
+        .wf-body p { margin: 0 0 12px; }
+        .wf-body p:last-child { margin-bottom: 0; }
+        .wf-body b { font-weight: 600; color: #1A1A1A; }
+        .wf-body .places-row {
+          margin-top: 14px;
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: 10px;
+        }
+        .wf-body .place-card {
+          background: #fff;
+          border: 1px solid #E5DFD3;
+          border-radius: 14px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          display: flex;
+          flex-direction: column;
+          text-align: left;
+          padding: 0;
+          font: inherit;
+          color: inherit;
+          width: 100%;
+        }
+        .wf-body .place-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+        }
+        .wf-body .place-card .ph {
+          aspect-ratio: 16 / 10;
+          background-size: cover;
+          background-position: center;
+          background-color: #EBDFCC;
+          position: relative;
+        }
+        .wf-body .place-card .ph .save {
+          position: absolute;
+          right: 8px;
+          top: 8px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.92);
+          display: grid;
+          place-items: center;
+          font-size: 13px;
+          color: #C95A3D;
+          border: none;
+          cursor: pointer;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+        }
+        .wf-body .place-card .ph .save.on {
+          background: #E76F51;
+          color: #fff;
+        }
+        .wf-body .place-card .ph .tag {
+          position: absolute;
+          left: 8px;
+          bottom: 8px;
+          padding: 3px 8px;
+          background: rgba(26, 26, 26, 0.78);
+          color: #fff;
+          font-size: 10.5px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          border-radius: 999px;
+          backdrop-filter: blur(4px);
+        }
+        .wf-body .place-card .info {
+          padding: 10px 12px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .wf-body .place-card .info .nm {
+          font-family: var(--font-bricolage), sans-serif;
+          font-weight: 600;
+          font-size: 13.5px;
+          letter-spacing: -0.01em;
+        }
+        .wf-body .place-card .info .sub {
+          font-size: 11.5px;
+          color: #7A736A;
+        }
+      `}</style>
     </div>
   );
 }
