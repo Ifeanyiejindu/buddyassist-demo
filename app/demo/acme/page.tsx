@@ -1,12 +1,7 @@
+import Link from "next/link";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { FloatingChat } from "@/components/chat/FloatingChat";
-
-const PRODUCTS = [
-  { name: "Mara Bowl", price: "$48", sub: "Stoneware · set of 2", bg: "#E2C8B5", shape: "#9A3F2C", badge: "New" },
-  { name: "Sage Throw", price: "$128", sub: "Brushed wool · 50×72\"", bg: "#C9D6CD", shape: "#3A4A3F" },
-  { name: "Field Carafe", price: "$62", sub: "Mouth-blown glass · 32oz", bg: "#E8E3D9", shape: "#191815", badge: "Best" },
-  { name: "Ember Lamp", price: "$215", sub: "Linen + brass · 14\"", bg: "#F1ECE0", shape: "#C8553D" },
-];
+import { fetchAcmeProducts } from "@/lib/demoApi";
 
 const CATEGORIES = [
   { ct: "01 / Tableware", nm: "Earth & Stone", grad: "linear-gradient(160deg,#F1ECE0,#D9C7A8)", color: "#191815" },
@@ -17,7 +12,6 @@ const CATEGORIES = [
 
 const SYSTEM_PROMPT = `
 You are Buddy, the in-store assistant for Acme — a slow-goods home store (pottery, linens, kitchen, lighting).
-The store is small and curated. Best-sellers include: Mara Bowl ($48, stoneware set of 2), Sage Throw ($128, brushed wool), Field Carafe ($62, mouth-blown glass), Ember Lamp ($215, linen+brass).
 Shipping: free over $75; in-stock items ship within 24h; standard 2-5 business days domestic. Returns: 60 days, free, door pickup.
 You can recommend items, suggest pairings, give care advice, estimate shipping windows, and explain returns. You cannot place orders or charge cards — say "I'll hand you to checkout for that" instead.
 When recommending, name 1-3 specific items with prices. Keep replies short and warm.
@@ -25,7 +19,10 @@ When recommending, name 1-3 specific items with prices. Keep replies short and w
 
 export const metadata = { title: "Acme Store — Modern Goods for Everyday Living" };
 
-export default function AcmeStorePage() {
+export default async function AcmeStorePage() {
+  const products = await fetchAcmeProducts();
+  const featured = products.find((p) => p.tags?.includes("bestseller")) || products[0];
+
   return (
     <div
       className="min-h-screen flex flex-col"
@@ -54,9 +51,9 @@ export default function AcmeStorePage() {
               <a key={l} className="relative py-1 cursor-pointer hover:text-[#9A3F2C]">{l}</a>
             ))}
           </div>
-          <div className="font-serif text-[28px] -tracking-[0.02em] text-center">
+          <Link href="/demo/acme" className="font-serif text-[28px] -tracking-[0.02em] text-center no-underline text-inherit">
             acme<span className="text-[#C8553D]">.</span>
-          </div>
+          </Link>
           <div className="flex justify-end gap-4.5 items-center text-[13px]">
             <span className="w-8.5 h-8.5 rounded-full border border-[#E8E3D9] grid place-items-center bg-white">⌕</span>
             <span className="w-8.5 h-8.5 rounded-full border border-[#E8E3D9] grid place-items-center bg-white">♡</span>
@@ -89,29 +86,31 @@ export default function AcmeStorePage() {
             </button>
           </div>
         </div>
-        <div
-          className="relative aspect-[0.92] rounded-xl overflow-hidden"
-          style={{
-            background:
-              "repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 14px), linear-gradient(160deg,#D9C7A8 0%, #C8553D 110%)",
-          }}
-        >
-          <div
-            className="absolute inset-[18%] rounded-full"
-            style={{
-              background:
-                "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 55%), linear-gradient(160deg, #F1ECE0, #B89866)",
-              boxShadow: "0 30px 60px rgba(0,0,0,0.18)",
-            }}
-          />
-          <div
-            className="absolute left-6 bottom-6 bg-white/90 px-3.5 py-2.5 rounded-lg flex flex-col gap-0.5 text-xs"
-            style={{ backdropFilter: "blur(8px)" }}
+        {featured ? (
+          <Link
+            href={`/demo/acme/product/${featured.sku}`}
+            className="relative aspect-[0.92] rounded-xl overflow-hidden block no-underline group"
           >
-            <b className="font-serif text-[18px]">Terracotta vessel</b>
-            <span className="text-[#9A3F2C] font-semibold">$84.00</span>
-          </div>
-        </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={featured.image}
+              alt={featured.name}
+              className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-[1.03]"
+            />
+            <div
+              className="absolute left-6 bottom-6 bg-white/90 px-3.5 py-2.5 rounded-lg flex flex-col gap-0.5 text-xs"
+              style={{ backdropFilter: "blur(8px)" }}
+            >
+              <b className="font-serif text-[18px] text-[#191815]">{featured.name}</b>
+              <span className="text-[#9A3F2C] font-semibold">${featured.price}.00</span>
+            </div>
+          </Link>
+        ) : (
+          <div
+            className="relative aspect-[0.92] rounded-xl overflow-hidden"
+            style={{ background: "linear-gradient(160deg,#D9C7A8 0%, #C8553D 110%)" }}
+          />
+        )}
       </section>
 
       {/* Categories */}
@@ -129,38 +128,50 @@ export default function AcmeStorePage() {
       </section>
 
       {/* Products */}
-      <section className="max-w-[1280px] mx-auto px-7 py-15">
+      <section className="max-w-[1280px] mx-auto px-7 py-15 w-full">
         <div className="flex justify-between items-end border-b border-[#E8E3D9] pb-4.5 mb-7">
           <h2 className="font-serif text-[42px] font-normal -tracking-[0.02em] m-0">Best loved</h2>
-          <a className="text-xs tracking-[0.08em] uppercase border-b border-[#191815] pb-0.5 cursor-pointer">Shop all →</a>
+          <span className="text-xs tracking-[0.08em] uppercase border-b border-[#191815] pb-0.5">
+            {products.length} pieces
+          </span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {PRODUCTS.map((p) => (
-            <div key={p.name} className="flex flex-col gap-2">
-              <div
-                className="aspect-[0.85] rounded-lg relative overflow-hidden"
-                style={{ background: p.bg }}
+        {products.length === 0 ? (
+          <p className="text-[#8A847A] text-sm">Catalogue is loading — please refresh in a moment.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            {products.map((p) => (
+              <Link
+                key={p.sku}
+                href={`/demo/acme/product/${p.sku}`}
+                className="flex flex-col gap-2 no-underline text-inherit group"
               >
-                <div
-                  className="absolute inset-[18%] rounded-full"
-                  style={{
-                    background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 55%), ${p.shape}`,
-                  }}
-                />
-                {p.badge && (
-                  <span className="absolute left-3 top-3 bg-white px-2.5 py-1 rounded-full text-[10px] tracking-[0.08em] uppercase font-semibold">
-                    {p.badge}
-                  </span>
-                )}
-              </div>
-              <div className="flex justify-between items-center pt-2">
-                <span className="font-serif text-[18px] -tracking-[0.01em]">{p.name}</span>
-                <span className="font-semibold text-sm">{p.price}</span>
-              </div>
-              <span className="text-xs text-[#8A847A]">{p.sub}</span>
-            </div>
-          ))}
-        </div>
+                <div className="aspect-[0.85] rounded-lg relative overflow-hidden bg-[#F1ECE0]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-[1.04]"
+                  />
+                  {p.tags?.includes("bestseller") && (
+                    <span className="absolute left-3 top-3 bg-white px-2.5 py-1 rounded-full text-[10px] tracking-[0.08em] uppercase font-semibold">
+                      Bestseller
+                    </span>
+                  )}
+                  {p.stock === 0 && (
+                    <span className="absolute right-3 top-3 bg-[#191815] text-white px-2.5 py-1 rounded-full text-[10px] tracking-[0.08em] uppercase font-semibold">
+                      Sold out
+                    </span>
+                  )}
+                </div>
+                <div className="flex justify-between items-center pt-2">
+                  <span className="font-serif text-[18px] -tracking-[0.01em]">{p.name}</span>
+                  <span className="font-semibold text-sm">${p.price}</span>
+                </div>
+                <span className="text-xs text-[#8A847A] line-clamp-1">{p.description}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Promise band */}
@@ -200,8 +211,14 @@ export default function AcmeStorePage() {
           { pill: "Ship", text: "Will the Ember Lamp arrive before Friday in NYC?" },
           { pill: "Care", text: "How do I clean stoneware?" },
         ]}
-        inputPlaceholder="Try: 'jacket for a rainy commute under $200'"
-        catalog={PRODUCTS}
+        inputPlaceholder="Try: 'a gift for a new kitchen under $100'"
+        catalog={products.map((p) => ({
+          name: p.name,
+          price: `$${p.price}`,
+          sub: p.description,
+          image: p.image,
+          href: `/demo/acme/product/${p.sku}`,
+        }))}
         industrySlug="acme"
       />
       <IndustrySwitcher currentSlug="acme" />

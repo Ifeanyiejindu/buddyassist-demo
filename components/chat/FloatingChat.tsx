@@ -16,6 +16,10 @@ interface ProductCard {
   sub?: string;
   bg?: string;
   shape?: string;
+  /** Real product image URL — rendered instead of the placeholder shape. */
+  image?: string;
+  /** Link to the product's page; the card becomes clickable. */
+  href?: string;
 }
 
 interface FloatingChatProps {
@@ -235,23 +239,32 @@ export function FloatingChat({
                     {m.products.map((p) => (
                       <a
                         key={p.name}
-                        href="#"
+                        href={p.href || "#"}
                         className="flex gap-3 items-center bg-white border border-[#E8E3D9] rounded-xl p-2.5 no-underline text-inherit transition-all hover:border-[#191815] hover:-translate-y-px"
                         style={{ animation: "ba-prod-in 0.35s cubic-bezier(0.2,0.8,0.2,1) both" }}
                       >
-                        <span
-                          className="w-14 h-14 rounded-lg flex-shrink-0 relative overflow-hidden"
-                          style={{ background: p.bg || "#E2C8B5" }}
-                        >
-                          <span
-                            className="absolute inset-[22%] rounded-full"
-                            style={{
-                              background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 55%), ${
-                                p.shape || "#9A3F2C"
-                              }`,
-                            }}
+                        {p.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            className="w-14 h-14 rounded-lg flex-shrink-0 object-cover bg-[#F1ECE0]"
                           />
-                        </span>
+                        ) : (
+                          <span
+                            className="w-14 h-14 rounded-lg flex-shrink-0 relative overflow-hidden"
+                            style={{ background: p.bg || "#E2C8B5" }}
+                          >
+                            <span
+                              className="absolute inset-[22%] rounded-full"
+                              style={{
+                                background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 55%), ${
+                                  p.shape || "#9A3F2C"
+                                }`,
+                              }}
+                            />
+                          </span>
+                        )}
                         <span className="flex-1 flex flex-col gap-0.5 min-w-0">
                           <span className="font-serif text-[15px] leading-[1.1]">{p.name}</span>
                           {p.sub && (
