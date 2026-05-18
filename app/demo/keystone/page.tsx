@@ -34,7 +34,7 @@ const AREA_LABELS = [
 
 const LISTINGS = [
   {
-    img: "[ brownstone facade ]",
+    img: "https://live.staticflickr.com/3902/14996764996_39a7914b96_b.jpg",
     price: "$1,395,000",
     addr: "427 Sackett St, #2 · Carroll Gardens",
     specs: ["3 bed", "2 bath", "1,420 sqft"],
@@ -43,7 +43,7 @@ const LISTINGS = [
     match: true,
   },
   {
-    img: "[ pre-war prewar living rm ]",
+    img: "https://live.staticflickr.com/1267/1196848877_939c62ea72.jpg",
     price: "$1,450,000",
     addr: "88 Garfield Pl, #4B · Park Slope",
     specs: ["2 bed + den", "2 bath", "1,180 sqft"],
@@ -52,7 +52,7 @@ const LISTINGS = [
     match: true,
   },
   {
-    img: "[ kitchen with island ]",
+    img: "https://live.staticflickr.com/7214/7157240902_18625f13f1_b.jpg",
     price: "$1,280,000",
     addr: "1612 Caton Ave · Kensington",
     specs: ["3 bed", "1.5 bath", "1,560 sqft"],
@@ -61,19 +61,19 @@ const LISTINGS = [
     match: true,
   },
   {
-    img: "[ rooftop view ]",
+    img: "https://live.staticflickr.com/3524/3183447589_ba268f46f4_b.jpg",
     price: "$1,620,000",
     addr: "14 Verandah Pl, #2 · Cobble Hill",
     specs: ["2 bed", "2 bath", "1,090 sqft"],
   },
   {
-    img: "[ modern bath ]",
+    img: "https://live.staticflickr.com/4008/4574794418_1b31a4b643_b.jpg",
     price: "$1,510,000",
     addr: "240 14th St, #3R · Park Slope South",
     specs: ["3 bed", "2 bath", "1,310 sqft"],
   },
   {
-    img: "[ garden facade ]",
+    img: "https://live.staticflickr.com/7326/9841377053_dc62190279_b.jpg",
     price: "$1,340,000",
     addr: "119 Bergen St · Boerum Hill",
     specs: ["2 bed", "1 bath", "1,040 sqft"],
@@ -280,17 +280,13 @@ export default function KeystonePage() {
               className={`grid gap-3.5 py-3.5 cursor-pointer ${i < LISTINGS.length - 1 ? "border-b border-[#E1DCCF]" : ""} hover:bg-[rgba(31,77,62,0.03)]`}
               style={{ gridTemplateColumns: "140px 1fr" }}
             >
-              <div
-                className="rounded grid place-items-center text-[#5E6B78] text-[9.5px] tracking-[0.05em]"
-                style={{
-                  aspectRatio: "4/3",
-                  background: "#F5F2EC",
-                  backgroundImage: "repeating-linear-gradient(135deg, transparent 0 8px, rgba(31,77,62,0.06) 8px 9px)",
-                  fontFamily: "var(--font-mono), monospace",
-                }}
-              >
-                {l.img}
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={l.img}
+                alt={l.addr}
+                className="rounded object-cover w-full"
+                style={{ aspectRatio: "4/3", background: "#F5F2EC" }}
+              />
               <div>
                 <div className="font-semibold text-[18px] -tracking-[0.01em]" style={{ fontFamily: "var(--font-geist), sans-serif" }}>
                   {l.price}

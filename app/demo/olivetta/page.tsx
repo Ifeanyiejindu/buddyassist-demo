@@ -20,6 +20,7 @@ Keep replies tight (1-3 short paragraphs). Don't bullet — write like you're at
 const DISHES = [
   {
     name: "Burrata di Andria",
+    image: "https://live.staticflickr.com/7023/6427841285_19c7ded058.jpg",
     price: "19",
     desc: "Heirloom tomato, basil oil, sourdough crostini.",
     tags: [{ l: "vegetarian", k: "veg" }],
@@ -27,6 +28,7 @@ const DISHES = [
   },
   {
     name: "Vitello Tonnato",
+    image: "https://live.staticflickr.com/6210/6088495097_643bbe1791_b.jpg",
     price: "22",
     desc: "Thin-sliced veal, tuna-caper emulsion, fried capers, lemon.",
     tags: [],
@@ -34,6 +36,7 @@ const DISHES = [
   },
   {
     name: "Carciofi alla Giudia",
+    image: "https://live.staticflickr.com/25/90110402_5d0c3ee9b0_b.jpg",
     price: "17",
     desc: "Twice-fried Roman artichokes, sea salt, lemon.",
     tags: [
@@ -44,6 +47,7 @@ const DISHES = [
   },
   {
     name: "Cacio e Pepe",
+    image: "https://live.staticflickr.com/3353/3277062463_451fb52848_b.jpg",
     price: "24",
     desc: "Tonnarelli, Pecorino Romano DOP, Tellicherry pepper.",
     tags: [{ l: "vegetarian", k: "veg" }],
@@ -51,6 +55,7 @@ const DISHES = [
   },
   {
     name: "Bucatini all'Amatriciana",
+    image: "https://live.staticflickr.com/499/19526053584_0e0830ff2d_b.jpg",
     price: "26",
     desc: "Guanciale, San Marzano, Pecorino, chili.",
     tags: [{ l: "a touch spicy", k: "spicy" }],
@@ -58,6 +63,7 @@ const DISHES = [
   },
   {
     name: "Ravioli di Zucca",
+    image: "https://live.staticflickr.com/8194/8088056327_56293d9716_b.jpg",
     price: "28",
     desc: "Brown butter, sage, amaretti crumb, Parmigiano 24mo.",
     tags: [{ l: "vegetarian", k: "veg" }],
@@ -65,6 +71,7 @@ const DISHES = [
   },
   {
     name: "Pizza Margherita D.O.C.",
+    image: "https://live.staticflickr.com/7191/6890102353_1d6ac74e24_b.jpg",
     price: "21",
     desc: "San Marzano, fior di latte, basil, EVOO.",
     tags: [{ l: "vegetarian", k: "veg" }],
@@ -72,6 +79,7 @@ const DISHES = [
   },
   {
     name: "Pizza Diavola",
+    image: "https://live.staticflickr.com/3535/3848435586_652ec58fe5_b.jpg",
     price: "24",
     desc: "'Nduja di Spilinga, smoked mozzarella, hot honey.",
     tags: [{ l: "spicy", k: "spicy" }],
@@ -79,6 +87,7 @@ const DISHES = [
   },
   {
     name: "Branzino al Forno",
+    image: "https://live.staticflickr.com/2603/4088061325_1a5476a841_b.jpg",
     price: "38",
     desc: "Whole sea bass, Castelvetrano olives, Meyer lemon, fennel.",
     tags: [{ l: "gluten-free", k: "gf" }],
@@ -86,6 +95,7 @@ const DISHES = [
   },
   {
     name: "Bistecca alla Fiorentina",
+    image: "https://live.staticflickr.com/4100/4864457231_5f47cc7cbb_b.jpg",
     price: "96 / 32oz",
     desc: "Dry-aged Piedmontese, rosemary potatoes, salsa verde.",
     tags: [{ l: "gluten-free", k: "gf" }],
@@ -396,6 +406,12 @@ export default function OlivellaPage() {
               style={{ borderBottom: "1px dashed #E2D6BD" }}
               onClick={() => askDish(d.ask)}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={d.image}
+                alt={d.name}
+                className="col-span-2 w-full h-44 object-cover rounded-lg mb-1"
+              />
               <div className="font-medium leading-tight" style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 22 }}>
                 {d.name}
               </div>
