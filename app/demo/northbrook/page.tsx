@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
+import { VoiceChat } from "@/components/chat/VoiceChat";
 import { BuddyChat } from "@/lib/buddyChat";
 import { createBuddyComplete } from "@/lib/buddyClient";
 
@@ -544,6 +545,13 @@ export default function NorthbrookPage() {
           </div>
         </div>
       )}
+
+      <VoiceChat
+        industrySlug="northbrook"
+        brand="Northbrook Desk"
+        accent="#2F6D8C"
+        greeting="Tap to call the Northbrook care desk."
+      />
 
       <IndustrySwitcher currentSlug="northbrook" />
 
