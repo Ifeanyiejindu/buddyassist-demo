@@ -562,3 +562,112 @@ export async function fetchLumenRecommendations(
     return [];
   }
 }
+
+// ── Helix (support helpdesk) ──────────────────────────────────────────────
+
+export interface HxMessage {
+  author: string;
+  role: string; // customer | agent | system
+  body: string;
+  at: string;
+}
+
+export interface HxTicket {
+  number: string;
+  customerEmail: string;
+  subject: string;
+  description: string;
+  priority: string; // urgent | high | normal | low
+  status: string; // open | pending | resolved | closed
+  team?: string;
+  channel?: string;
+  tags?: string[];
+  createdAt: string;
+  messages?: HxMessage[];
+  assignee?: string;
+}
+
+export interface HxSla {
+  number: string;
+  priority: string;
+  slaHours: number;
+  ageHours: number;
+  firstResponseAt: string | null;
+  responded: boolean;
+  slaRemainingHours: number;
+  breached: boolean;
+}
+
+export interface HxKbArticle {
+  articleId: string;
+  title: string;
+  body?: string;
+  tags?: string[];
+}
+
+/** One ticket by number (includes messages, customer, agent). */
+export async function fetchHelixTicket(number: string): Promise<HxTicket | null> {
+  try {
+    const json = await demoGet(`/helix/tickets/${encodeURIComponent(number)}`);
+    return (json?.data as HxTicket) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fan-out fetch for the demo queue (no list-all endpoint). */
+export async function fetchHelixTickets(numbers: string[]): Promise<HxTicket[]> {
+  const results = await Promise.all(numbers.map((n) => fetchHelixTicket(n)));
+  return results.filter((t): t is HxTicket => t !== null);
+}
+
+/** SLA status for a ticket — remaining time, breached flag, etc. */
+export async function fetchHelixSla(number: string): Promise<HxSla | null> {
+  try {
+    const json = await demoGet(`/helix/tickets/${encodeURIComponent(number)}/sla`);
+    return (json?.data as HxSla) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** All tickets for a single customer email. */
+export async function fetchHelixCustomerTickets(email: string): Promise<{
+  customer: { name: string; email: string; company?: string; plan?: string } | null;
+  tickets: HxTicket[];
+}> {
+  try {
+    const json = await demoGet(
+      `/helix/customers/${encodeURIComponent(email)}/tickets`,
+    );
+    return {
+      customer: (json?.data?.customer as any) ?? null,
+      tickets: (json?.data?.tickets as HxTicket[]) ?? [],
+    };
+  } catch {
+    return { customer: null, tickets: [] };
+  }
+}
+
+/** Similar resolved tickets for a query (the AI uses this for context). */
+export async function fetchHelixSimilarTickets(query: string): Promise<HxTicket[]> {
+  const qs = new URLSearchParams({ q: query });
+  try {
+    const json = await demoGet(`/helix/tickets/similar?${qs}`);
+    return (json?.data?.tickets as HxTicket[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** KB search. */
+export async function fetchHelixKb(query: string): Promise<HxKbArticle[]> {
+  if (!query) return [];
+  const qs = new URLSearchParams({ q: query });
+  try {
+    const json = await demoGet(`/helix/kb?${qs}`);
+    return (json?.data?.articles as HxKbArticle[]) ?? [];
+  } catch {
+    return [];
+  }
+}
