@@ -342,3 +342,113 @@ export async function fetchKeystoneNeighborhood(
     return null;
   }
 }
+
+// ── Northbank (banking) ───────────────────────────────────────────────────
+
+export interface NbCustomer {
+  customerId: string;
+  name: string;
+  email: string;
+  creditScore: number;
+  memberSince: string;
+}
+
+export interface NbAccount {
+  accountNumber: string;
+  customerId: string;
+  type: string; // checking | savings | brokerage | credit
+  balance: number;
+  currency: string;
+  dailyTransferLimit?: number;
+  status: string; // active | frozen | closed
+}
+
+export interface NbTransaction {
+  txnId: string;
+  accountNumber: string;
+  date: string;
+  description: string;
+  merchant: string;
+  category: string; // groceries | dining | transport | utilities | shopping | income
+  amount: number; // negative = debit, positive = credit
+  disputed?: boolean;
+  disputeStatus?: string;
+}
+
+export interface NbStatement {
+  accountNumber: string;
+  month: string;
+  transactionCount: number;
+  totalIncome: number;
+  totalSpending: number;
+  net: number;
+  byCategory: Record<string, number>;
+}
+
+/** A customer + their accounts (joined server-side). */
+export async function fetchNorthbankCustomerAccounts(
+  customerId: string,
+): Promise<{ customer: NbCustomer | null; accounts: NbAccount[] }> {
+  try {
+    const json = await demoGet(
+      `/northbank/customers/${encodeURIComponent(customerId)}/accounts`,
+    );
+    return {
+      customer: (json?.data?.customer as NbCustomer) ?? null,
+      accounts: (json?.data?.accounts as NbAccount[]) ?? [],
+    };
+  } catch {
+    return { customer: null, accounts: [] };
+  }
+}
+
+/** One account by number. */
+export async function fetchNorthbankAccount(
+  accountNumber: string,
+): Promise<NbAccount | null> {
+  try {
+    const json = await demoGet(
+      `/northbank/accounts/${encodeURIComponent(accountNumber)}`,
+    );
+    return (json?.data as NbAccount) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Transactions for an account, optionally filtered by YYYY-MM month + category. */
+export async function fetchNorthbankTransactions(
+  accountNumber: string,
+  opts?: { month?: string; category?: string },
+): Promise<NbTransaction[]> {
+  const qs = new URLSearchParams();
+  if (opts?.month) qs.set("month", opts.month);
+  if (opts?.category) qs.set("category", opts.category);
+  const query = qs.toString() ? `?${qs}` : "";
+  try {
+    const json = await demoGet(
+      `/northbank/accounts/${encodeURIComponent(accountNumber)}/transactions${query}`,
+    );
+    return (json?.data?.transactions as NbTransaction[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Categorised statement summary for an account (current month if omitted). */
+export async function fetchNorthbankStatement(
+  accountNumber: string,
+  month?: string,
+): Promise<NbStatement | null> {
+  const qs = new URLSearchParams();
+  if (month) qs.set("month", month);
+  const query = qs.toString() ? `?${qs}` : "";
+  try {
+    const json = await demoGet(
+      `/northbank/accounts/${encodeURIComponent(accountNumber)}/statement${query}`,
+    );
+    return (json?.data as NbStatement) ?? null;
+  } catch {
+    return null;
+  }
+}
