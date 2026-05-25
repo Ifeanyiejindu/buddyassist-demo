@@ -779,3 +779,96 @@ export async function fetchPulseAlerts(clientId: string): Promise<PsAlert[]> {
     return [];
   }
 }
+
+// ── Northbrook (healthcare) ───────────────────────────────────────────────
+
+export interface NbkProvider {
+  providerId: string;
+  name: string;
+  specialty: string;
+  bio: string;
+  acceptingNewPatients: boolean;
+}
+
+export interface NbkLabResult {
+  test: string;
+  date: string;
+  result: string;
+  flag: string; // normal | borderline | high | low
+}
+
+export interface NbkAppointment {
+  appointmentId: string;
+  patientId: string;
+  providerId: string;
+  type: string;
+  reason: string;
+  startsAt: string;
+  durationMin: number;
+  status: string;
+}
+
+export interface NbkPatient {
+  patientId: string;
+  name: string;
+  email: string;
+  phone: string;
+  dob: string;
+  insuranceProvider?: string;
+  insurancePlan?: string;
+  primaryProviderId?: string;
+  labResults?: NbkLabResult[];
+}
+
+/** Providers (optionally filtered by specialty). */
+export async function fetchNorthbrookProviders(opts?: { specialty?: string }): Promise<NbkProvider[]> {
+  const qs = new URLSearchParams();
+  if (opts?.specialty) qs.set("specialty", opts.specialty);
+  const query = qs.toString() ? `?${qs}` : "";
+  try {
+    const json = await demoGet(`/northbrook/providers${query}`);
+    return (json?.data?.providers as NbkProvider[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Patient profile + upcoming appointments. */
+export async function fetchNorthbrookPatient(patientId: string): Promise<{
+  patient: NbkPatient | null;
+  upcomingAppointments: NbkAppointment[];
+}> {
+  try {
+    const json = await demoGet(`/northbrook/patients/${encodeURIComponent(patientId)}`);
+    return {
+      patient: (json?.data?.patient as NbkPatient) ?? null,
+      upcomingAppointments: (json?.data?.upcomingAppointments as NbkAppointment[]) ?? [],
+    };
+  } catch {
+    return { patient: null, upcomingAppointments: [] };
+  }
+}
+
+/** Lab results for a patient. */
+export async function fetchNorthbrookResults(patientId: string): Promise<NbkLabResult[]> {
+  try {
+    const json = await demoGet(`/northbrook/patients/${encodeURIComponent(patientId)}/results`);
+    return (json?.data?.results as NbkLabResult[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Next available appointment slots for a provider on a given date. */
+export async function fetchNorthbrookAvailability(
+  providerId: string,
+  date: string,
+): Promise<string[]> {
+  const qs = new URLSearchParams({ providerId, date });
+  try {
+    const json = await demoGet(`/northbrook/availability?${qs}`);
+    return (json?.data?.openSlots as string[]) ?? [];
+  } catch {
+    return [];
+  }
+}
