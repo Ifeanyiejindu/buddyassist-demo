@@ -671,3 +671,111 @@ export async function fetchHelixKb(query: string): Promise<HxKbArticle[]> {
     return [];
   }
 }
+
+// ── Pulse (marketing analytics) ───────────────────────────────────────────
+
+export interface PsAudience {
+  name: string;
+  impressions: number;
+  conversions: number;
+  cpa: number;
+}
+
+export interface PsCampaign {
+  campaignId: string;
+  clientId: string;
+  name: string;
+  channel: string; // Meta | Google | TikTok | LinkedIn
+  status: string; // live | paused | ended
+  budgetUsd: number;
+  spentUsd: number;
+  startDate: string;
+  cycleDays: number;
+  daysElapsed: number;
+  audiences?: PsAudience[];
+}
+
+export interface PsPacing {
+  campaignId: string;
+  budgetUsd: number;
+  spentUsd: number;
+  daysElapsed: number;
+  cycleDays: number;
+  expectedSpend: number;
+  variance: number;
+  projectedEndSpend: number;
+  status: string; // overpacing | underpacing | on-track
+}
+
+export interface PsRoas {
+  periodWeeks: number;
+  spend: number;
+  revenue: number;
+  conversions: number;
+  roas: number;
+}
+
+export interface PsAlert {
+  channel: string;
+  metric: string;
+  changePct: number;
+  severity: string; // high | medium | low
+  explanation: string;
+}
+
+/** All campaigns, optionally filtered by client / status. */
+export async function fetchPulseCampaigns(opts?: {
+  clientId?: string;
+  status?: string;
+}): Promise<PsCampaign[]> {
+  const qs = new URLSearchParams();
+  if (opts?.clientId) qs.set("clientId", opts.clientId);
+  if (opts?.status) qs.set("status", opts.status);
+  const query = qs.toString() ? `?${qs}` : "";
+  try {
+    const json = await demoGet(`/pulse/campaigns${query}`);
+    return (json?.data?.campaigns as PsCampaign[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Single campaign by id (includes audiences). */
+export async function fetchPulseCampaign(id: string): Promise<PsCampaign | null> {
+  try {
+    const json = await demoGet(`/pulse/campaigns/${encodeURIComponent(id)}`);
+    return (json?.data as PsCampaign) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Pacing analysis for one campaign. */
+export async function fetchPulsePacing(id: string): Promise<PsPacing | null> {
+  try {
+    const json = await demoGet(`/pulse/campaigns/${encodeURIComponent(id)}/pacing`);
+    return (json?.data as PsPacing) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** ROAS rollup for a client over the last N weeks (default 4). */
+export async function fetchPulseRoas(clientId: string): Promise<PsRoas | null> {
+  try {
+    const json = await demoGet(`/pulse/clients/${encodeURIComponent(clientId)}/roas`);
+    return (json?.data as PsRoas) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** WoW alerts (spend / conversion anomalies) for a client. */
+export async function fetchPulseAlerts(clientId: string): Promise<PsAlert[]> {
+  try {
+    const json = await demoGet(`/pulse/clients/${encodeURIComponent(clientId)}/alerts`);
+    return (json?.data?.alerts as PsAlert[]) ?? [];
+  } catch {
+    return [];
+  }
+}
