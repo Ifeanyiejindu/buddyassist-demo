@@ -149,3 +149,92 @@ export async function fetchWayfareStays(
     return [];
   }
 }
+
+// ── Olivetta (restaurant) ─────────────────────────────────────────────────
+
+export interface OlPairing {
+  wine?: string;
+  region?: string;
+  why?: string;
+  side?: string;
+}
+
+export interface OlDish {
+  itemId: string;
+  name: string;
+  description: string;
+  course: string; // starter | main | pizza | dessert | side
+  price: number;
+  allergens: string[];
+  dietary: string[]; // vegetarian | vegan | gluten-free | dairy-free
+  popular: boolean;
+  isSpecial: boolean;
+  pairings: OlPairing[];
+  available: boolean;
+  image?: string;
+}
+
+export interface OlAvailabilitySlot {
+  time: string; // "19:00"
+  seatsRemaining: number;
+}
+
+export interface OlAvailability {
+  date: string;
+  partySize: number;
+  openSlots: OlAvailabilitySlot[];
+}
+
+/** Full menu, optionally filtered by course / dietary on the server. */
+export async function fetchOlivettaMenu(opts?: {
+  course?: string;
+  dietary?: string;
+}): Promise<OlDish[]> {
+  const qs = new URLSearchParams();
+  if (opts?.course) qs.set("course", opts.course);
+  if (opts?.dietary) qs.set("dietary", opts.dietary);
+  const query = qs.toString() ? `?${qs}` : "";
+  try {
+    const json = await demoGet(`/olivetta/menu${query}`);
+    // Backend may return menu or dishes — accept both shapes.
+    return (json?.data?.menu ||
+      json?.data?.dishes ||
+      []) as OlDish[];
+  } catch {
+    return [];
+  }
+}
+
+/** Tonight's chef specials. */
+export async function fetchOlivettaSpecials(): Promise<OlDish[]> {
+  try {
+    const json = await demoGet("/olivetta/specials");
+    return (json?.data?.specials as OlDish[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Single dish detail (includes its pairings). */
+export async function fetchOlivettaDish(itemId: string): Promise<OlDish | null> {
+  try {
+    const json = await demoGet(`/olivetta/menu/${encodeURIComponent(itemId)}`);
+    return (json?.data as OlDish) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Available reservation slots for a date + party size. */
+export async function fetchOlivettaAvailability(
+  date: string,
+  partySize: number,
+): Promise<OlAvailability | null> {
+  const qs = new URLSearchParams({ date, partySize: String(partySize) });
+  try {
+    const json = await demoGet(`/olivetta/availability?${qs}`);
+    return (json?.data as OlAvailability) ?? null;
+  } catch {
+    return null;
+  }
+}
