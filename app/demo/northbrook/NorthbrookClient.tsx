@@ -316,18 +316,32 @@ Speak in short, spoken-style sentences (1–3 short paragraphs). Repeat back det
 
       socket.on("connect_error", (err) => {
         setCallError(err?.message || "Connection error");
+        setThinking(false);
         teardownVoice();
       });
       socket.on("voice_error", (e: { message: string }) => {
         setCallError(e?.message || "Voice error");
+        setThinking(false);
       });
       socket.on("voice_ready", () => {
         // Greeting will arrive as the first 'audio' + 'transcript' events.
         setThinking(false);
       });
-      socket.on("voice_closed", () => {
-        teardownVoice();
-        setOpen(false);
+      // Upstream gone — keep the panel open and surface why so the visitor
+      // (and we, debugging) can see the close reason instead of a silent
+      // auto-close that looks like a successful hang-up.
+      socket.on(
+        "voice_closed",
+        (info: { code?: number; reason?: string } = {}) => {
+          setThinking(false);
+          setCallError((prev) =>
+            prev || info.reason || `Call ended unexpectedly (code ${info.code ?? "?"}).`,
+          );
+        },
+      );
+      socket.on("disconnect", (reason: string) => {
+        setThinking(false);
+        setCallError((prev) => prev || `Disconnected: ${reason}`);
       });
 
       socket.on(
