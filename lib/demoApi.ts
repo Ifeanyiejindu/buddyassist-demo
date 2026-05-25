@@ -238,3 +238,107 @@ export async function fetchOlivettaAvailability(
     return null;
   }
 }
+
+// ── Keystone (real estate) ────────────────────────────────────────────────
+
+export interface KsAgent {
+  agentId: string;
+  name: string;
+  phone?: string;
+  rating?: number;
+  neighborhoods?: string[];
+}
+
+export interface KsListing {
+  listingId: string;
+  title: string;
+  propertyType: string; // condo | house | townhouse
+  status: string; // active | pending | sold
+  beds: number;
+  baths: number;
+  sqft: number;
+  price: number;
+  minOffer?: number;
+  neighborhood: string;
+  nearTransit?: boolean;
+  transitNote?: string;
+  address: string;
+  agentId: string;
+  image?: string;
+  images?: string[];
+  agent?: KsAgent;
+}
+
+export interface KsComparable {
+  address: string;
+  soldUsd: number;
+  beds: number;
+}
+
+export interface KsNeighborhood {
+  name: string;
+  city: string;
+  summary: string;
+  medianPriceUsd: number;
+  walkScore: number;
+  transitScore: number;
+  comparables: KsComparable[];
+  activeListings: number;
+}
+
+/** All listings, optionally filtered by neighborhood / price range / beds. */
+export async function fetchKeystoneListings(opts?: {
+  neighborhood?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  beds?: number;
+}): Promise<KsListing[]> {
+  const qs = new URLSearchParams();
+  if (opts?.neighborhood) qs.set("neighborhood", opts.neighborhood);
+  if (opts?.minPrice) qs.set("minPrice", String(opts.minPrice));
+  if (opts?.maxPrice) qs.set("maxPrice", String(opts.maxPrice));
+  if (opts?.beds) qs.set("beds", String(opts.beds));
+  const query = qs.toString() ? `?${qs}` : "";
+  try {
+    const json = await demoGet(`/keystone/listings${query}`);
+    return (json?.data?.listings as KsListing[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Single listing — includes the assigned agent (joined server-side). */
+export async function fetchKeystoneListing(id: string): Promise<KsListing | null> {
+  try {
+    const json = await demoGet(`/keystone/listings/${encodeURIComponent(id)}`);
+    return (json?.data as KsListing) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Open viewing slots for a listing (next ~2 weeks of working hours). */
+export async function fetchKeystoneViewingSlots(id: string): Promise<string[]> {
+  try {
+    const json = await demoGet(
+      `/keystone/listings/${encodeURIComponent(id)}/viewing-slots`,
+    );
+    return (json?.data?.openSlots as string[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Neighborhood profile with walkability + comparables. */
+export async function fetchKeystoneNeighborhood(
+  name: string,
+): Promise<KsNeighborhood | null> {
+  try {
+    const json = await demoGet(
+      `/keystone/neighborhoods/${encodeURIComponent(name)}`,
+    );
+    return (json?.data as KsNeighborhood) ?? null;
+  } catch {
+    return null;
+  }
+}
