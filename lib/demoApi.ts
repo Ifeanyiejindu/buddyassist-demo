@@ -452,3 +452,113 @@ export async function fetchNorthbankStatement(
     return null;
   }
 }
+
+// ── Lumen (edtech) ────────────────────────────────────────────────────────
+
+export interface LumCourse {
+  courseId: string;
+  title: string;
+  subject: string;
+  level: string; // beginner | intermediate | advanced
+  description?: string;
+  prerequisites?: string[];
+  lessonCount: number;
+  seats?: number;
+  enrolledCount?: number;
+}
+
+export interface LumLesson {
+  lessonId: string;
+  courseId: string;
+  order: number;
+  title: string;
+  durationMin: number;
+  quiz?: any;
+}
+
+export interface LumProgressItem {
+  courseId: string;
+  status: string;
+  lessonsCompleted: number;
+  totalLessons: number;
+  progressPct: number;
+}
+
+export interface LumProgress {
+  studentId: string;
+  completedCourses: string[];
+  progress: LumProgressItem[];
+}
+
+export interface LumRecommendation {
+  courseId: string;
+  title: string;
+  subject: string;
+  level: string;
+  reason: string;
+}
+
+/** All available courses, optionally filtered by subject / level. */
+export async function fetchLumenCourses(opts?: {
+  subject?: string;
+  level?: string;
+}): Promise<LumCourse[]> {
+  const qs = new URLSearchParams();
+  if (opts?.subject) qs.set("subject", opts.subject);
+  if (opts?.level) qs.set("level", opts.level);
+  const query = qs.toString() ? `?${qs}` : "";
+  try {
+    const json = await demoGet(`/lumen/courses${query}`);
+    return (json?.data?.courses as LumCourse[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** One course by id. */
+export async function fetchLumenCourse(courseId: string): Promise<LumCourse | null> {
+  try {
+    const json = await demoGet(`/lumen/courses/${encodeURIComponent(courseId)}`);
+    return (json?.data as LumCourse) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lessons of a course, ordered. */
+export async function fetchLumenLessons(courseId: string): Promise<LumLesson[]> {
+  try {
+    const json = await demoGet(
+      `/lumen/courses/${encodeURIComponent(courseId)}/lessons`,
+    );
+    return (json?.data?.lessons as LumLesson[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Per-student progress across enrolled courses. */
+export async function fetchLumenProgress(studentId: string): Promise<LumProgress | null> {
+  try {
+    const json = await demoGet(
+      `/lumen/students/${encodeURIComponent(studentId)}/progress`,
+    );
+    return (json?.data as LumProgress) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Recommendations engine — what should the student take next. */
+export async function fetchLumenRecommendations(
+  studentId: string,
+): Promise<LumRecommendation[]> {
+  try {
+    const json = await demoGet(
+      `/lumen/students/${encodeURIComponent(studentId)}/recommendations`,
+    );
+    return (json?.data?.recommendations as LumRecommendation[]) ?? [];
+  } catch {
+    return [];
+  }
+}
