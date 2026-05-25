@@ -1,13 +1,72 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { io, Socket } from "socket.io-client";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
-import { VoiceChat } from "@/components/chat/VoiceChat";
 import { BuddyChat } from "@/lib/buddyChat";
 import { createBuddyComplete } from "@/lib/buddyClient";
 import type { NbkProvider, NbkAppointment } from "@/lib/demoApi";
+
+// ── Voice transport (Buddy /voice gateway, LiveKit hidden server-side) ──
+//
+// Browser captures mic → AudioWorklet batches into ~100ms blocks →
+// downsample to PCM16 24kHz mono → base64 → socket.emit('audio'). Bot
+// audio arrives the same way and is scheduled gap-free on a continuous
+// playhead so it plays without clicks.
+
+const VOICE_API_BASE =
+  process.env.NEXT_PUBLIC_BUDDY_API_BASE || "http://localhost:7003/api/v1";
+const VOICE_SOCKET_BASE = VOICE_API_BASE.replace(/\/api\/v\d+\/?$/, "");
+const VOICE_TARGET_SAMPLE_RATE = 24000;
+
+const NORTHBROOK_PROJECT_ID = process.env.NEXT_PUBLIC_NORTHBROOK_PROJECT_ID;
+const NORTHBROOK_API_KEY = process.env.NEXT_PUBLIC_NORTHBROOK_API_KEY;
+
+function bufferToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+
+function base64ToBuffer(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function floatToPCM16At(input: Float32Array, from: number, to: number): Uint8Array {
+  if (input.length === 0) return new Uint8Array(0);
+  const ratio = from / to;
+  const outLen = Math.floor(input.length / ratio);
+  const pcm = new Int16Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const idx = i * ratio;
+    const i0 = Math.floor(idx);
+    const i1 = Math.min(i0 + 1, input.length - 1);
+    const t = idx - i0;
+    const sample = input[i0] * (1 - t) + input[i1] * t;
+    pcm[i] = Math.max(-1, Math.min(1, sample)) * 0x7fff;
+  }
+  return new Uint8Array(pcm.buffer);
+}
+
+function pcm16ToAudioBuffer(
+  ctx: AudioContext,
+  bytes: Uint8Array,
+  sampleRate: number,
+): AudioBuffer {
+  const pcm = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+  const buf = ctx.createBuffer(1, pcm.length, sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 0x7fff;
+  return buf;
+}
 
 interface NorthbrookClientProps {
   /** Live providers from the Northbrook API. */
@@ -90,11 +149,25 @@ Speak in short, spoken-style sentences (1–3 short paragraphs). Repeat back det
 
   const [open, setOpen] = useState(false);
   const [seconds, setSeconds] = useState(0);
-  const [transcript, setTranscript] = useState<{ who: "buddy" | "you"; text: string }[]>([]);
+  const [transcript, setTranscript] = useState<{ who: "buddy" | "you"; text: string; partial?: boolean }[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [callError, setCallError] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const chat = useRef(new BuddyChat({ systemPrompt: SYSTEM_PROMPT, complete: createBuddyComplete("northbrook") }));
+
+  // ── Voice transport refs ────────────────────────────────────────────────
+  // One AudioContext owns both mic capture (via AudioWorklet) and bot
+  // playback. Socket lives until endCall(). The playhead lets us schedule
+  // incoming audio chunks back-to-back for gap-free speech.
+  const socketRef = useRef<Socket | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const captureRateRef = useRef<number>(48000);
+  const playheadRef = useRef<number>(0);
+  const mutedRef = useRef(false);
 
   // Timer
   useEffect(() => {
@@ -109,36 +182,242 @@ Speak in short, spoken-style sentences (1–3 short paragraphs). Repeat back det
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [transcript, thinking]);
 
-  function openCall() {
+  // ── Real voice teardown — always callable, never throws ──────────────
+  const teardownVoice = useCallback(() => {
+    workletNodeRef.current?.disconnect();
+    workletNodeRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    socketRef.current?.disconnect();
+    socketRef.current = null;
+    playheadRef.current = 0;
+    setThinking(false);
+  }, []);
+
+  // Always release the mic + socket when the panel unmounts.
+  useEffect(() => () => teardownVoice(), [teardownVoice]);
+
+  // ── Append a "buddy" transcript line, merging streaming partials ─────
+  const pushBuddyText = useCallback(
+    (text: string, final: boolean) => {
+      setTranscript((prev) => {
+        const tail = prev[prev.length - 1];
+        if (tail && tail.who === "buddy" && tail.partial && !final) {
+          const next = prev.slice();
+          next[next.length - 1] = { ...tail, text: tail.text + text };
+          return next;
+        }
+        if (tail && tail.who === "buddy" && tail.partial && final) {
+          const next = prev.slice();
+          next[next.length - 1] = { ...tail, text, partial: false };
+          return next;
+        }
+        return [...prev, { who: "buddy", text, partial: !final }];
+      });
+    },
+    [],
+  );
+
+  // ── Real openCall: request mic, open socket, wait for greeting ───────
+  const openCall = useCallback(async () => {
+    if (open) return;
     chat.current.reset();
     setTranscript([]);
     setSeconds(0);
+    setInput("");
+    setCallError(null);
+    setMuted(false);
+    mutedRef.current = false;
+    setThinking(true); // shows the typing-dots until the bot's first audio
     setOpen(true);
-    setTimeout(() => {
-      setTranscript((t) => [
-        ...t,
-        {
-          who: "buddy",
-          text:
-            "Hi — you've reached the Northbrook desk. Are you calling about an appointment, a refill, or something else? I can also help if you're not sure.",
-        },
-      ]);
-    }, 500);
-  }
 
+    if (!NORTHBROOK_PROJECT_ID || !NORTHBROOK_API_KEY) {
+      setCallError("Voice isn't configured for this demo.");
+      setThinking(false);
+      return;
+    }
+
+    try {
+      // 1. Mic — browser will prompt if permission hasn't been granted.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
+      streamRef.current = stream;
+
+      // 2. AudioContext + inline AudioWorklet that batches Float32 frames
+      //    into ~100ms blocks. The worklet code lives in a Blob URL so
+      //    we don't need a separate file.
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+      captureRateRef.current = ctx.sampleRate;
+
+      const workletCode = `
+        class NbkMic extends AudioWorkletProcessor {
+          constructor() {
+            super();
+            this.buf = [];
+            this.bufLen = 0;
+            this.targetSamples = Math.floor(sampleRate * 0.1);
+          }
+          process(inputs) {
+            const input = inputs[0];
+            if (!input || !input[0]) return true;
+            const ch = input[0];
+            this.buf.push(new Float32Array(ch));
+            this.bufLen += ch.length;
+            while (this.bufLen >= this.targetSamples) {
+              const out = new Float32Array(this.targetSamples);
+              let off = 0;
+              while (off < this.targetSamples && this.buf.length) {
+                const head = this.buf[0];
+                const take = Math.min(head.length, this.targetSamples - off);
+                out.set(head.subarray(0, take), off);
+                if (take === head.length) this.buf.shift();
+                else this.buf[0] = head.subarray(take);
+                off += take;
+              }
+              this.bufLen -= this.targetSamples;
+              this.port.postMessage(out, [out.buffer]);
+            }
+            return true;
+          }
+        }
+        registerProcessor('nbk-mic', NbkMic);
+      `;
+      const blobUrl = URL.createObjectURL(
+        new Blob([workletCode], { type: "application/javascript" }),
+      );
+      await ctx.audioWorklet.addModule(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+
+      const source = ctx.createMediaStreamSource(stream);
+      const workletNode = new AudioWorkletNode(ctx, "nbk-mic");
+      workletNodeRef.current = workletNode;
+      source.connect(workletNode);
+      // Worklet must be in the audio graph to actually run, but route
+      // through a muted gain so the user doesn't hear themselves.
+      const sink = ctx.createGain();
+      sink.gain.value = 0;
+      workletNode.connect(sink).connect(ctx.destination);
+
+      // 3. Buddy voice socket.
+      const socket = io(`${VOICE_SOCKET_BASE}/voice`, {
+        transports: ["websocket"],
+        auth: {
+          projectId: NORTHBROOK_PROJECT_ID,
+          apiKey: NORTHBROOK_API_KEY,
+        },
+        reconnection: false,
+      });
+      socketRef.current = socket;
+
+      socket.on("connect_error", (err) => {
+        setCallError(err?.message || "Connection error");
+        teardownVoice();
+      });
+      socket.on("voice_error", (e: { message: string }) => {
+        setCallError(e?.message || "Voice error");
+      });
+      socket.on("voice_ready", () => {
+        // Greeting will arrive as the first 'audio' + 'transcript' events.
+        setThinking(false);
+      });
+      socket.on("voice_closed", () => {
+        teardownVoice();
+        setOpen(false);
+      });
+
+      socket.on(
+        "transcript",
+        (t: { text: string; role: "user" | "assistant"; final: boolean }) => {
+          if (t.role === "assistant") {
+            pushBuddyText(t.text, t.final);
+          } else if (t.role === "user" && t.final && t.text) {
+            setTranscript((prev) => [...prev, { who: "you", text: t.text }]);
+          }
+        },
+      );
+
+      socket.on("audio", (b64: string) => {
+        if (!audioCtxRef.current) return;
+        try {
+          const bytes = base64ToBuffer(b64);
+          const buf = pcm16ToAudioBuffer(
+            audioCtxRef.current,
+            bytes,
+            VOICE_TARGET_SAMPLE_RATE,
+          );
+          const src = audioCtxRef.current.createBufferSource();
+          src.buffer = buf;
+          src.connect(audioCtxRef.current.destination);
+          const now = audioCtxRef.current.currentTime;
+          const startAt = Math.max(now, playheadRef.current);
+          src.start(startAt);
+          playheadRef.current = startAt + buf.duration;
+        } catch {
+          /* decode failure on one chunk — ignore, others will keep coming */
+        }
+      });
+
+      // 4. Pipe mic chunks → socket.
+      workletNode.port.onmessage = (e: MessageEvent<Float32Array>) => {
+        if (mutedRef.current) return;
+        if (!socket.connected) return;
+        const pcm = floatToPCM16At(
+          e.data,
+          captureRateRef.current,
+          VOICE_TARGET_SAMPLE_RATE,
+        );
+        socket.emit("audio", bufferToBase64(pcm));
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Couldn't start voice";
+      setCallError(msg);
+      setThinking(false);
+      teardownVoice();
+    }
+  }, [open, pushBuddyText, teardownVoice]);
+
+  // ── End-call: tear down everything, close the panel ──────────────────
   function closeCall() {
+    teardownVoice();
     setOpen(false);
   }
 
+  // ── Toggle mute (mic stops sending; bot audio still plays) ───────────
+  const toggleMute = useCallback(() => {
+    setMuted((m) => {
+      mutedRef.current = !m;
+      return !m;
+    });
+  }, []);
+
+  // ── Text input fallback — inject as a user message via the socket ────
+  // OpenAI Realtime accepts conversation.item.create over the same wire,
+  // but the simplest server-side path is to mirror what user audio does:
+  // commit a typed line as if it were a finished turn.
   async function send(text: string) {
     const v = text.trim();
-    if (!v || chat.current.busy) return;
-    setTranscript((t) => [...t, { who: "you", text: v }]);
+    if (!v) return;
     setInput("");
-    setThinking(true);
-    const reply = await chat.current.send(v);
-    setThinking(false);
-    if (reply) setTranscript((t) => [...t, { who: "buddy", text: reply }]);
+    setTranscript((prev) => [...prev, { who: "you", text: v }]);
+    const socket = socketRef.current;
+    if (socket && socket.connected) {
+      // Tell the gateway to insert this as the user's turn + ask for a reply.
+      // The /voice gateway extension for 'text' is wired in the backend bridge.
+      socket.emit("text", v);
+    } else {
+      // Voice isn't up — fall back to the text-only BuddyChat path so the
+      // panel still works even before the socket is ready.
+      if (chat.current.busy) return;
+      setThinking(true);
+      const reply = await chat.current.send(v);
+      setThinking(false);
+      if (reply) pushBuddyText(reply, true);
+    }
   }
 
   const mins = Math.floor(seconds / 60);
@@ -456,9 +735,29 @@ Speak in short, spoken-style sentences (1–3 short paragraphs). Repeat back det
                 Northbrook · Desk
               </h3>
               <div className="text-[13px] text-[#5F7282] inline-flex items-center gap-1.5">
-                <span className="w-[7px] h-[7px] rounded-full bg-[#2FC463]" />
-                Connected · listening
+                <span
+                  className="w-[7px] h-[7px] rounded-full"
+                  style={{
+                    background: callError
+                      ? "#D14545"
+                      : socketRef.current?.connected
+                        ? "#2FC463"
+                        : "#F2A93B",
+                  }}
+                />
+                {callError
+                  ? "Call error"
+                  : socketRef.current?.connected
+                    ? muted
+                      ? "Connected · muted"
+                      : "Connected · listening"
+                    : "Connecting…"}
               </div>
+              {callError && (
+                <div className="text-[12px] text-[#B53737] mt-1.5 max-w-[280px] mx-auto leading-snug">
+                  {callError}
+                </div>
+              )}
               <div className="text-sm text-[#5F7282] mt-2" style={{ fontFamily: "var(--font-fraunces), serif" }}>
                 {pad(mins)}:{pad(secs)}
               </div>
@@ -550,11 +849,16 @@ Speak in short, spoken-style sentences (1–3 short paragraphs). Repeat back det
             <div className="px-6 py-4.5 flex justify-center gap-3 border-t border-[#E3E7EA]">
               <button
                 type="button"
-                title="Mute"
-                className="w-[54px] h-[54px] rounded-full border-0 cursor-pointer grid place-items-center text-lg"
-                style={{ background: "#EAF2F6", color: "#1F4E68" }}
+                onClick={toggleMute}
+                title={muted ? "Unmute mic" : "Mute mic"}
+                aria-label={muted ? "Unmute" : "Mute"}
+                className="w-[54px] h-[54px] rounded-full border-0 cursor-pointer grid place-items-center text-lg transition-colors"
+                style={{
+                  background: muted ? "#FDE2E2" : "#EAF2F6",
+                  color: muted ? "#B53737" : "#1F4E68",
+                }}
               >
-                ⏸
+                {muted ? "🔇" : "⏸"}
               </button>
               <button
                 type="button"
@@ -581,13 +885,6 @@ Speak in short, spoken-style sentences (1–3 short paragraphs). Repeat back det
           </div>
         </div>
       )}
-
-      <VoiceChat
-        industrySlug="northbrook"
-        brand="Northbrook Desk"
-        accent="#2F6D8C"
-        greeting="Tap to call the Northbrook care desk."
-      />
 
       <IndustrySwitcher currentSlug="northbrook" />
 
