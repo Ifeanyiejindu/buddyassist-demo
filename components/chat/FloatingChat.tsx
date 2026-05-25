@@ -2,8 +2,66 @@
 
 import { useEffect, useRef, useState, ReactNode } from "react";
 import Image from "next/image";
-import { BuddyChat, mdInline } from "@/lib/buddyChat";
+import { BuddyChat, mdInline, splitForCards } from "@/lib/buddyChat";
 import { createBuddyComplete, type IndustrySlug } from "@/lib/buddyClient";
+import { getCart, cartSummaryForAI } from "@/lib/cart";
+
+// ── Cross-page chat persistence ──────────────────────────────────────────
+//
+// Without this, the visitor opens Buddy on /demo/acme, asks about a
+// product, clicks the product card → lands on /demo/acme/product/sku →
+// component unmounts → state is gone → the next render shows the
+// welcome state again. Hostile to a real shopping flow.
+//
+// Persist per-industry: the UI message log (what the visitor sees), the
+// underlying BuddyChat history (what the AI knows), and the open/closed
+// panel state so the panel reopens automatically on the next page if
+// it was open before. 7-day TTL so abandoned sessions auto-reset.
+const STORAGE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface PersistedState {
+  messages: ChatMsg[];
+  history: { role: "user" | "assistant"; content: string }[];
+  open: boolean;
+  hideSuggests: boolean;
+  savedAt: number;
+}
+
+function storageKey(slug?: string) {
+  return `bademo:chat:${slug || "_anon"}`;
+}
+
+function loadPersisted(slug?: string): PersistedState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(storageKey(slug));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedState;
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > STORAGE_TTL_MS) {
+      window.localStorage.removeItem(storageKey(slug));
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function savePersisted(slug: string | undefined, state: Omit<PersistedState, "savedAt">) {
+  if (typeof window === "undefined") return;
+  try {
+    // Cap history we keep so localStorage doesn't bloat indefinitely.
+    const trimmed: PersistedState = {
+      ...state,
+      messages: state.messages.slice(-40),
+      history: state.history.slice(-40),
+      savedAt: Date.now(),
+    };
+    window.localStorage.setItem(storageKey(slug), JSON.stringify(trimmed));
+  } catch {
+    /* quota / serialization errors — silently ignore */
+  }
+}
 
 interface Suggest {
   pill: string;
@@ -22,6 +80,16 @@ interface ProductCard {
   href?: string;
 }
 
+/** Extend message state to carry raw text + split parts for product rendering. */
+interface ChatMsg {
+  role: "user" | "assistant";
+  html: string;
+  raw: string;
+  products?: ProductCard[];
+  introHtml?: string;
+  trailingHtml?: string;
+}
+
 interface FloatingChatProps {
   systemPrompt: string;
   brand: string;
@@ -34,16 +102,12 @@ interface FloatingChatProps {
   catalog?: ProductCard[];
   /** Hex strings overriding the chat panel accents. */
   theme?: {
-    bubbleAccent?: string; // brand accent shown on user bubble
-    sendBg?: string; // send-button green
+    bubbleAccent?: string;
+    sendBg?: string;
     panelBg?: string;
   };
-  /** Footer line; defaults to "Powered by Buddy Assist". */
   footer?: ReactNode;
-  /** Optional chat completion provider — return the assistant's reply text. */
   complete?: (messages: { role: "user" | "assistant"; content: string }[]) => Promise<string>;
-  /** Industry slug used to resolve a backend-backed `complete` when none is passed.
-   *  Safe to send across the server/client boundary — `complete` is built inside the client. */
   industrySlug?: IndustrySlug;
 }
 
@@ -61,18 +125,50 @@ export function FloatingChat({
   industrySlug,
 }: FloatingChatProps) {
   const resolvedComplete = complete || (industrySlug ? createBuddyComplete(industrySlug) : undefined);
-  const [open, setOpen] = useState(false);
+
+  // Restore the prior session for this industry on mount. The component
+  // re-mounts every page navigation (no shared layout in /demo/<industry>),
+  // so this is the only thing that makes the conversation survive going
+  // from the storefront → product page → cart.
+  const restored = useRef<PersistedState | null>(loadPersisted(industrySlug));
+
+  const [open, setOpen] = useState(restored.current?.open ?? false);
   const [showGreet, setShowGreet] = useState(true);
-  const [messages, setMessages] = useState<
-    { role: "user" | "assistant"; html: string; products?: ProductCard[] }[]
-  >([]);
+  const [messages, setMessages] = useState<ChatMsg[]>(
+    restored.current?.messages ?? [],
+  );
   const [typing, setTyping] = useState(false);
-  const [hideSuggests, setHideSuggests] = useState(false);
+  const [hideSuggests, setHideSuggests] = useState(
+    restored.current?.hideSuggests ?? false,
+  );
   const [input, setInput] = useState("");
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  // Store the base prompt so we can append live cart state before each send
+  const basePrompt = useRef(systemPrompt);
   const chat = useRef(
-    new BuddyChat({ systemPrompt, complete: resolvedComplete as never }),
+    new BuddyChat({
+      systemPrompt,
+      complete: resolvedComplete as never,
+      // Seed BuddyChat with the prior AI-visible history so the
+      // assistant doesn't forget what it discussed when the visitor
+      // navigates to a new page.
+      history: restored.current?.history ?? [],
+    }),
   );
+
+  // Persist on every meaningful state change. Keep this cheap — we run
+  // it in an effect (not on every render synchronously) so the writes
+  // are batched after React commits.
+  useEffect(() => {
+    // Don't persist an empty state on first mount.
+    if (messages.length === 0 && !open) return;
+    savePersisted(industrySlug, {
+      messages,
+      history: chat.current.history,
+      open,
+      hideSuggests,
+    });
+  }, [messages, open, hideSuggests, industrySlug]);
 
   useEffect(() => {
     const t = setTimeout(() => setShowGreet(false), 6000);
@@ -99,9 +195,17 @@ export function FloatingChat({
   async function send(text: string) {
     const value = text.trim();
     if (!value || chat.current.busy) return;
+
+    // Inject live cart state so the bot knows what the user has added
+    const cartSummary = cartSummaryForAI(getCart());
+    chat.current.systemPrompt =
+      basePrompt.current +
+      "\n\n[LIVE CART — use when the user asks about their cart, do not repeat verbatim]\n" +
+      cartSummary;
+
     setHideSuggests(true);
     setInput("");
-    setMessages((m) => [...m, { role: "user", html: mdInline(value) }]);
+    setMessages((m) => [...m, { role: "user", html: mdInline(value), raw: value }]);
     setTyping(true);
 
     let botIdx = -1;
@@ -110,25 +214,36 @@ export function FloatingChat({
         setTyping(false);
         setMessages((m) => {
           if (botIdx === -1) {
-            const next = [...m, { role: "assistant" as const, html: mdInline(full) }];
+            const next = [
+              ...m,
+              { role: "assistant" as const, html: mdInline(full), raw: full },
+            ];
             botIdx = next.length - 1;
             return next;
           }
           const next = [...m];
-          next[botIdx] = { ...next[botIdx], html: mdInline(full) };
+          next[botIdx] = { ...next[botIdx], html: mdInline(full), raw: full };
           return next;
         });
       },
       onDone: (full) => {
         const products = findProducts(full);
-        if (products.length) {
-          setMessages((m) => {
-            const idx = botIdx === -1 ? m.length - 1 : botIdx;
-            const next = [...m];
-            if (next[idx]) next[idx] = { ...next[idx], products };
-            return next;
-          });
-        }
+        const { intro, trailing } = splitForCards(full);
+        setMessages((m) => {
+          const idx = botIdx === -1 ? m.length - 1 : botIdx;
+          const next = [...m];
+          if (next[idx]) {
+            next[idx] = {
+              ...next[idx],
+              raw: full,
+              html: mdInline(full),
+              products: products.length ? products : undefined,
+              introHtml: products.length && intro ? mdInline(intro) : undefined,
+              trailingHtml: products.length && trailing ? mdInline(trailing) : undefined,
+            };
+          }
+          return next;
+        });
       },
     });
   }
@@ -224,62 +339,103 @@ export function FloatingChat({
               </div>
             )}
 
-            {messages.map((m, i) => (
-              <div key={i} className="contents">
+            {messages.map((m, i) => {
+              /* ── User bubble ─────────────────────────────────── */
+              if (m.role === "user") {
+                return (
+                  <div
+                    key={i}
+                    className="self-end max-w-[88%] px-3.5 py-2.5 rounded-[14px] rounded-br text-[13.5px] leading-[1.5] bg-[#191815] text-white"
+                    dangerouslySetInnerHTML={{ __html: m.html }}
+                  />
+                );
+              }
+
+              /* ── Bot message WITH product cards ──────────────── */
+              if (m.products && m.products.length > 0) {
+                return (
+                  <div key={i} className="contents">
+                    {/* Intro line e.g. "Here are some of our latest products:" */}
+                    {m.introHtml && (
+                      <div
+                        className="self-start max-w-[88%] px-3.5 py-2.5 rounded-[14px] rounded-bl text-[13.5px] leading-[1.5] bg-white border border-[#E8E3D9] text-[#191815]"
+                        dangerouslySetInnerHTML={{ __html: m.introHtml }}
+                      />
+                    )}
+
+                    {/* Product cards — image-first, clickable */}
+                    <div className="self-start max-w-[88%] flex flex-col gap-2">
+                      {m.products.map((p) => (
+                        <a
+                          key={p.name}
+                          href={p.href || "#"}
+                          className="flex gap-3 items-center bg-white border border-[#E8E3D9] rounded-xl p-2.5 no-underline text-inherit transition-all hover:border-[#191815] hover:-translate-y-px"
+                          style={{
+                            animation: "ba-prod-in 0.35s cubic-bezier(0.2,0.8,0.2,1) both",
+                          }}
+                        >
+                          {p.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={p.image}
+                              alt={p.name}
+                              className="w-14 h-14 rounded-lg flex-shrink-0 object-cover bg-[#F1ECE0]"
+                            />
+                          ) : (
+                            <span
+                              className="w-14 h-14 rounded-lg flex-shrink-0 relative overflow-hidden"
+                              style={{ background: p.bg || "#E2C8B5" }}
+                            >
+                              <span
+                                className="absolute inset-[22%] rounded-full"
+                                style={{
+                                  background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 55%), ${
+                                    p.shape || "#9A3F2C"
+                                  }`,
+                                }}
+                              />
+                            </span>
+                          )}
+                          <span className="flex-1 flex flex-col gap-0.5 min-w-0">
+                            <span className="font-serif text-[15px] leading-[1.1]">
+                              {p.name}
+                            </span>
+                            {p.sub && (
+                              <span className="text-[11px] text-[#8A847A] truncate">
+                                {p.sub}
+                              </span>
+                            )}
+                          </span>
+                          {p.price && (
+                            <span className="font-semibold text-[13px] flex-shrink-0 pl-2">
+                              {p.price}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-[#C8553D] flex-shrink-0">→</span>
+                        </a>
+                      ))}
+                    </div>
+
+                    {/* Trailing note e.g. "Let me know if you need more info!" */}
+                    {m.trailingHtml && (
+                      <div
+                        className="self-start max-w-[88%] px-3.5 py-2.5 rounded-[14px] rounded-bl text-[13.5px] leading-[1.5] bg-white border border-[#E8E3D9] text-[#191815]"
+                        dangerouslySetInnerHTML={{ __html: m.trailingHtml }}
+                      />
+                    )}
+                  </div>
+                );
+              }
+
+              /* ── Regular bot message ─────────────────────────── */
+              return (
                 <div
-                  className={`max-w-[88%] px-3.5 py-2.5 rounded-[14px] text-[13.5px] leading-[1.5] whitespace-pre-wrap ${
-                    m.role === "user"
-                      ? "self-end bg-[#191815] text-white rounded-br"
-                      : "self-start bg-white border border-[#E8E3D9] text-[#191815] rounded-bl"
-                  }`}
+                  key={i}
+                  className="self-start max-w-[88%] px-3.5 py-2.5 rounded-[14px] rounded-bl text-[13.5px] leading-[1.5] bg-white border border-[#E8E3D9] text-[#191815]"
                   dangerouslySetInnerHTML={{ __html: m.html }}
                 />
-                {m.products && m.products.length > 0 && (
-                  <div className="self-start max-w-[88%] flex flex-col gap-2 -mt-0.5">
-                    {m.products.map((p) => (
-                      <a
-                        key={p.name}
-                        href={p.href || "#"}
-                        className="flex gap-3 items-center bg-white border border-[#E8E3D9] rounded-xl p-2.5 no-underline text-inherit transition-all hover:border-[#191815] hover:-translate-y-px"
-                        style={{ animation: "ba-prod-in 0.35s cubic-bezier(0.2,0.8,0.2,1) both" }}
-                      >
-                        {p.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.image}
-                            alt={p.name}
-                            className="w-14 h-14 rounded-lg flex-shrink-0 object-cover bg-[#F1ECE0]"
-                          />
-                        ) : (
-                          <span
-                            className="w-14 h-14 rounded-lg flex-shrink-0 relative overflow-hidden"
-                            style={{ background: p.bg || "#E2C8B5" }}
-                          >
-                            <span
-                              className="absolute inset-[22%] rounded-full"
-                              style={{
-                                background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 55%), ${
-                                  p.shape || "#9A3F2C"
-                                }`,
-                              }}
-                            />
-                          </span>
-                        )}
-                        <span className="flex-1 flex flex-col gap-0.5 min-w-0">
-                          <span className="font-serif text-[15px] leading-[1.1]">{p.name}</span>
-                          {p.sub && (
-                            <span className="text-[11px] text-[#8A847A] truncate">{p.sub}</span>
-                          )}
-                        </span>
-                        {p.price && (
-                          <span className="font-semibold text-[13px] flex-shrink-0 pl-2">{p.price}</span>
-                        )}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
 
             {typing && (
               <div className="self-start bg-white border border-[#E8E3D9] px-3.5 py-3 rounded-[14px] rounded-bl flex gap-1">
