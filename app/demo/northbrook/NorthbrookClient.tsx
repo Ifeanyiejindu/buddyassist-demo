@@ -725,6 +725,10 @@ Speak in short, spoken-style sentences (1–3 short paragraphs). Repeat back det
             className="bg-white rounded-[28px] overflow-hidden flex flex-col"
             style={{
               width: "min(520px, calc(100vw - 32px))",
+              // Cap the whole panel so the transcript scrolls inside it
+              // (the body already has overflow-y-auto) instead of pushing
+              // the controls off-screen as new lines stream in.
+              maxHeight: "min(720px, calc(100vh - 48px))",
               boxShadow: "0 30px 80px rgba(0,0,0,0.30)",
             }}
           >
@@ -799,8 +803,9 @@ Speak in short, spoken-style sentences (1–3 short paragraphs). Repeat back det
               })}
             </div>
 
-            {/* Body */}
-            <div ref={bodyRef} className="px-7 py-6 max-h-[42vh] overflow-y-auto flex flex-col gap-3.5">
+            {/* Body — takes leftover panel space; scrolls when transcript
+                outgrows it instead of pushing the controls down. */}
+            <div ref={bodyRef} className="px-7 py-6 flex-1 min-h-0 overflow-y-auto flex flex-col gap-3.5">
               {transcript.map((t, i) => (
                 <div key={i} className="flex gap-3 items-start">
                   <div
