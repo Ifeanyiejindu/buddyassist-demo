@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { FloatingChat } from "@/components/chat/FloatingChat";
+import { AcmeCartIcon } from "@/components/acme/AcmeCartIcon";
 import { fetchAcmeProducts } from "@/lib/demoApi";
 
 const CATEGORIES = [
@@ -13,8 +14,10 @@ const CATEGORIES = [
 const SYSTEM_PROMPT = `
 You are Buddy, the in-store assistant for Acme — a slow-goods home store (pottery, linens, kitchen, lighting).
 Shipping: free over $75; in-stock items ship within 24h; standard 2-5 business days domestic. Returns: 60 days, free, door pickup.
-You can recommend items, suggest pairings, give care advice, estimate shipping windows, and explain returns. You cannot place orders or charge cards — say "I'll hand you to checkout for that" instead.
-When recommending, name 1-3 specific items with prices. Keep replies short and warm.
+You can recommend items, suggest pairings, give care advice, estimate shipping windows, and explain returns.
+You also know the user's current cart (it's injected as context before each message). When asked about the cart, list the items clearly.
+You cannot place orders or charge cards — say "I'll hand you to checkout for that" instead.
+When recommending products, lead with the product names immediately (do not write lengthy intro paragraphs first). Name 1–3 specific items with prices. Keep replies short and warm.
 `.trim();
 
 export const metadata = { title: "Acme Store — Modern Goods for Everyday Living" };
@@ -55,12 +58,9 @@ export default async function AcmeStorePage() {
             acme<span className="text-[#C8553D]">.</span>
           </Link>
           <div className="flex justify-end gap-4.5 items-center text-[13px]">
-            <span className="w-8.5 h-8.5 rounded-full border border-[#E8E3D9] grid place-items-center bg-white">⌕</span>
-            <span className="w-8.5 h-8.5 rounded-full border border-[#E8E3D9] grid place-items-center bg-white">♡</span>
-            <span className="relative w-8.5 h-8.5 rounded-full border border-[#E8E3D9] grid place-items-center bg-white">
-              ⌒
-              <span className="absolute -top-1 -right-1 bg-[#C8553D] text-white text-[9px] w-3.5 h-3.5 rounded-full grid place-items-center">3</span>
-            </span>
+            <span className="w-[34px] h-[34px] rounded-full border border-[#E8E3D9] grid place-items-center bg-white cursor-pointer">⌕</span>
+            <span className="w-[34px] h-[34px] rounded-full border border-[#E8E3D9] grid place-items-center bg-white cursor-pointer">♡</span>
+            <AcmeCartIcon />
           </div>
         </div>
       </header>
@@ -203,19 +203,23 @@ export default async function AcmeStorePage() {
         brand="Acme Assistant"
         greeting="Need a hand finding something?"
         introLines={[
-          "Hi — I can help with the catalog, your cart, returns, and shipping windows. Ask me anything, or pick a starter:",
+          "Hi — I can help you find products, check shipping, care for your items, or see what's in your cart. Pick a starter or just ask:",
         ]}
         suggests={[
-          { pill: "Gift", text: "Help me pick a housewarming gift under $100." },
-          { pill: "Match", text: "What goes with the Mara Bowl?" },
-          { pill: "Ship", text: "Will the Ember Lamp arrive before Friday in NYC?" },
-          { pill: "Care", text: "How do I clean stoneware?" },
-        ]}
-        inputPlaceholder="Try: 'a gift for a new kitchen under $100'"
+          { pill: "Latest", text: "What are your latest products?" },
+          ...(products[0]
+            ? [{ pill: "Recommend", text: `Recommend something that goes with the ${products[0].name}.` }]
+            : []),
+          ...(products[1]
+            ? [{ pill: "Ship", text: `How fast can the ${products[1].name} arrive in London?` }]
+            : []),
+          { pill: "Cart", text: "What's in my cart?" },
+        ].slice(0, 4)}
+        inputPlaceholder="e.g. 'a gift for a new kitchen under $100'"
         catalog={products.map((p) => ({
           name: p.name,
           price: `$${p.price}`,
-          sub: p.description,
+          sub: `${p.material} · ${p.description.slice(0, 55)}${p.description.length > 55 ? "…" : ""}`,
           image: p.image,
           href: `/demo/acme/product/${p.sku}`,
         }))}

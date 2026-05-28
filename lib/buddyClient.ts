@@ -107,8 +107,29 @@ export function createBuddyComplete(
     }
 
     const session = ensureSession(slug);
-    const lastUser = [...messages].reverse().find((m) => m.role === "user");
-    const message = lastUser?.content || "";
+
+    // Skip system-injection messages (they start with "[ROLE BRIEF") to find the
+    // real last user message. Extract any [LIVE CART] context injected by FloatingChat
+    // and embed it directly in the message so the backend LLM has the data it needs.
+    const systemMsg = messages.find(
+      (m) => m.role === "user" && m.content.startsWith("[ROLE BRIEF"),
+    );
+    const lastUser = [...messages]
+      .reverse()
+      .find((m) => m.role === "user" && !m.content.startsWith("[ROLE BRIEF"));
+    let message = lastUser?.content || "";
+
+    if (systemMsg) {
+      const cartMatch = systemMsg.content.match(
+        /\[LIVE CART[^\n]*\]\n([\s\S]*?)(?=\n\nKeep replies|$)/,
+      );
+      if (cartMatch) {
+        const cartContext = cartMatch[1].trim();
+        if (cartContext && cartContext !== "Cart is empty.") {
+          message = `${message}\n\n[User's current cart: ${cartContext}]`;
+        }
+      }
+    }
 
     try {
       const res = await fetch(
@@ -134,13 +155,21 @@ export function createBuddyComplete(
       }
 
       const json = await res.json();
-      // Persist conversation_id for follow-ups.
-      const convId =
-        json?.data?.conversation?._id ||
-        json?.data?.conversation_id ||
-        json?.conversation?._id ||
-        json?.conversation_id;
-      if (convId) session.conversation_id = String(convId);
+
+      // If the conversation was escalated by the backend, reset the session so the
+      // next message creates a fresh conversation instead of being permanently stuck
+      // with "An agent is handling your conversation."
+      if (json?.data?.escalated === true) {
+        sessions.delete(slug);
+      } else {
+        // Persist conversation_id for follow-ups.
+        const convId =
+          json?.data?.conversation?._id ||
+          json?.data?.conversation_id ||
+          json?.conversation?._id ||
+          json?.conversation_id;
+        if (convId) session.conversation_id = String(convId);
+      }
 
       const reply =
         json?.data?.message?.content ||

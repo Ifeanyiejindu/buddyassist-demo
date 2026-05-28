@@ -106,11 +106,52 @@ export class BuddyChat {
   }
 }
 
-/** Tiny inline markdown — only **bold** and *italic*, HTML-escaped. */
+/** Tiny inline markdown — bold, italic, and bare URLs. Image tags are stripped
+ *  (they're rendered as product cards instead). */
 export function mdInline(s: string): string {
+  // Strip markdown images BEFORE escaping so URLs with & don't break the regex
+  const noImages = s
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")   // ![alt](url)
+    .replace(/\n[ \t]*\n[ \t]*\n/g, "\n\n") // collapse triple+ blank lines
+    .trim();
+
   const escape = (t: string) =>
     t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
-  return escape(s)
+
+  return escape(noImages)
     .replace(/\*\*([^*\n]+?)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|\W)\*([^*\n]+?)\*(?=\W|$)/g, "$1<em>$2</em>");
+}
+
+/**
+ * When a bot reply contains a numbered product list, split the text into:
+ * - intro: the sentence(s) before the "1. Product…" block
+ * - trailing: any text after the last product/image line (e.g. "Let me know…")
+ *
+ * If no numbered list is found, returns { intro: raw, trailing: "" } so the
+ * full text is shown as normal.
+ */
+export function splitForCards(raw: string): { intro: string; trailing: string } {
+  const lines = raw.split("\n");
+  let firstProdLine = -1;
+  let lastProdLine = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (/^\d+\.\s/.test(l) || /^!\[/.test(l) || /^\s*-\s+\*\*/.test(l)) {
+      if (firstProdLine === -1) firstProdLine = i;
+      lastProdLine = i;
+    }
+  }
+
+  if (firstProdLine === -1) return { intro: raw.trim(), trailing: "" };
+
+  const intro = lines.slice(0, firstProdLine).join("\n").trim();
+  const trailing = lines
+    .slice(lastProdLine + 1)
+    .join("\n")
+    .replace(/^\s*\n+/, "")
+    .trim();
+
+  return { intro, trailing };
 }

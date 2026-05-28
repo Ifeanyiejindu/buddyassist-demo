@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { IndustrySwitcher } from "@/components/IndustrySwitcher";
 import { FloatingChat } from "@/components/chat/FloatingChat";
+import { AcmeCartIcon } from "@/components/acme/AcmeCartIcon";
+import { AddToCartButton } from "@/components/acme/AddToCartButton";
 import { fetchAcmeProduct, fetchAcmeProducts } from "@/lib/demoApi";
 
 const SYSTEM_PROMPT = `
@@ -30,9 +32,12 @@ export default async function AcmeProductPage({ params }: { params: Promise<{ sk
           <Link href="/demo/acme" className="font-serif text-[28px] -tracking-[0.02em] no-underline text-inherit">
             acme<span className="text-[#C8553D]">.</span>
           </Link>
-          <Link href="/demo/acme" className="text-[13px] text-[#8A847A] no-underline hover:text-[#191815]">
-            ← Back to shop
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/demo/acme" className="text-[13px] text-[#8A847A] no-underline hover:text-[#191815]">
+              ← Back to shop
+            </Link>
+            <AcmeCartIcon />
+          </div>
         </div>
       </header>
       {children}
@@ -136,13 +141,13 @@ export default async function AcmeProductPage({ params }: { params: Promise<{ sk
           )}
 
           <div className="flex gap-3 flex-wrap mt-auto">
-            <button
-              type="button"
-              disabled={product.stock === 0}
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#191815] text-[#FAF8F4] rounded-full font-medium text-[13px] cursor-pointer hover:-translate-y-px transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {product.stock > 0 ? "Add to cart" : "Sold out"}
-            </button>
+            <AddToCartButton
+              sku={product.sku}
+              name={product.name}
+              price={product.price}
+              image={product.image}
+              outOfStock={product.stock === 0}
+            />
             <button
               type="button"
               className="inline-flex items-center gap-2 px-6 py-3.5 bg-transparent text-[#191815] border border-[#191815] rounded-full font-medium text-[13px] cursor-pointer hover:-translate-y-px transition-transform"
