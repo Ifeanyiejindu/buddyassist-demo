@@ -41,6 +41,34 @@ function askForDish(d: OlDish): string {
   return `Tell me about the ${d.name}.`;
 }
 
+/**
+ * Recipe #2 — find real menu items the AI mentioned in its reply so
+ * we can render their cards under the bubble. Case-insensitive match
+ * on the full dish name; capped so a single response doesn't render
+ * 10 cards in a row.
+ */
+function findMentionedDishes(reply: string, menu: OlDish[]): OlDish[] {
+  if (!reply) return [];
+  const lower = reply.toLowerCase();
+  const found: OlDish[] = [];
+  const seen = new Set<string>();
+  for (const d of menu) {
+    if (!d.name) continue;
+    // Word-boundary match on name — avoids overlapping partial hits
+    // like "Mara Bowl" also matching every mention of "mara".
+    const safe = d.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`\\b${safe}\\b`, "i");
+    if (re.test(reply) || lower.includes(d.name.toLowerCase())) {
+      if (!seen.has(d.itemId)) {
+        seen.add(d.itemId);
+        found.push(d);
+      }
+    }
+    if (found.length >= 6) break;
+  }
+  return found;
+}
+
 const SYSTEM_PROMPT = `
 You are Renata Falci, the sommelier and dining host at Olivella — a neighbourhood wood-fired Italian trattoria in Carroll Gardens, Brooklyn.
 Speak warmly, in plain English, with a touch of Italian-American warmth (light, never cartoonish — no "mamma mia"). You know the menu by heart and have a 240-bottle Italian wine list.
@@ -200,17 +228,50 @@ export default function OlivettaClient({ menu, specials, availability }: Olivett
             <span>183 Smith St, Brooklyn</span>
           </div>
         </div>
-        <div
-          className="rounded-md grid place-items-center text-[#7A6E5B] text-[11px]"
-          style={{
-            aspectRatio: "4/5",
-            background: "#F2EAD8",
-            backgroundImage: "repeating-linear-gradient(45deg, transparent 0 16px, rgba(63,78,42,0.06) 16px 17px)",
-            fontFamily: "var(--font-mono), monospace",
-          }}
-        >
-          [ wood-fired oven · golden hour ]
-        </div>
+        {/* Hero image — first popular dish or first menu item, pulled
+            from the live Olivetta API. Falls back to the striped
+            placeholder if the menu hasn't loaded yet. */}
+        {(() => {
+          const heroDish = menu.find((d) => d.popular) || menu[0];
+          if (heroDish?.image) {
+            return (
+              <div
+                className="rounded-md overflow-hidden relative"
+                style={{ aspectRatio: "4/5" }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={heroDish.image}
+                  alt={heroDish.name}
+                  className="w-full h-full object-cover"
+                />
+                <div
+                  className="absolute left-4 bottom-4 px-3 py-1.5 rounded text-[11.5px] text-white"
+                  style={{
+                    background: "rgba(26,20,16,0.65)",
+                    backdropFilter: "blur(4px)",
+                    fontFamily: "var(--font-mono), monospace",
+                  }}
+                >
+                  {heroDish.name}{heroDish.popular ? " · popular" : ""}
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div
+              className="rounded-md grid place-items-center text-[#7A6E5B] text-[11px]"
+              style={{
+                aspectRatio: "4/5",
+                background: "#F2EAD8",
+                backgroundImage: "repeating-linear-gradient(45deg, transparent 0 16px, rgba(63,78,42,0.06) 16px 17px)",
+                fontFamily: "var(--font-mono), monospace",
+              }}
+            >
+              [ wood-fired oven · golden hour ]
+            </div>
+          );
+        })()}
       </section>
 
       <section className="px-6 md:px-14 py-8">
@@ -332,6 +393,41 @@ export default function OlivettaClient({ menu, specials, availability }: Olivett
                       Renata
                     </div>
                     <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: mdInline(m.text) }} />
+                    {/* Recipe #2 — when Renata names a real dish from
+                        the live menu, render a small linkable card so
+                        the guest can tap straight through to the dish
+                        detail page with pairings. */}
+                    {(() => {
+                      const mentioned = findMentionedDishes(m.text, menu);
+                      if (mentioned.length === 0) return null;
+                      return (
+                        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-[540px]">
+                          {mentioned.map((d) => (
+                            <Link
+                              key={d.itemId}
+                              href={`/demo/olivetta/menu/${d.itemId}`}
+                              className="bg-white border border-[#E2D6BD] rounded-lg overflow-hidden no-underline text-inherit hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(63,78,42,0.10)] transition-all"
+                            >
+                              {d.image && (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img src={d.image} alt={d.name} className="w-full aspect-[4/3] object-cover" />
+                              )}
+                              <div className="p-2">
+                                <div
+                                  className="text-[12px] font-medium leading-tight"
+                                  style={{ fontFamily: "var(--font-fraunces), serif" }}
+                                >
+                                  {d.name}
+                                </div>
+                                <div className="text-[11px] text-[#7A6E5B] mt-0.5" style={{ fontFamily: "var(--font-mono), monospace" }}>
+                                  ${d.price}
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ),
               )}
